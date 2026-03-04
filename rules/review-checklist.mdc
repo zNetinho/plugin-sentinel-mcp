@@ -1,0 +1,16 @@
+---
+description: Checklist de revisão de código da agência
+globs: "**/*.{ts,tsx,js,jsx,py,css,html}"
+alwaysApply: false
+---
+
+# Checklist de revisão
+
+Ao revisar código, verificar:
+
+1. **Lógica**: Comportamento correto e casos de borda considerados.
+2. **Segurança**: Sem dados sensíveis expostos, inputs validados.
+3. **Performance**: Sem loops desnecessários ou operações pesadas em hot paths.
+4. **Acessibilidade**: Uso de semântica e ARIA quando aplicável (front-end).
+5. **Testes**: Cobertura adequada para mudanças críticas.
+6. **Padrões**: Alinhado com as regras e convenções do projeto.

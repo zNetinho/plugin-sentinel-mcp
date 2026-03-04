@@ -1,0 +1,12 @@
+---
+description: Consultar a pasta docs/ para documentação do projeto, API, workflows e entidades
+alwaysApply: true
+---
+
+# Documentação do projeto
+
+A documentação de referência do projeto fica na pasta **`docs/`** na raiz do repositório.
+
+- **Quando precisar de**: conceitos do domínio, API, workflows, entidades (projetos, tarefas, clientes, etc.), autenticação, paginação, webhooks ou exemplos de uso, **consulte os arquivos em `docs/`**.
+- **Índice**: use `docs/Indíce.md` para navegar pelos tópicos disponíveis (autenticação, request limit, pagination, parâmetros, exemplos, webhooks, estágios, clientes, projetos, tarefas, times, usuários, workflows, etc.).
+- **Antes de responder** sobre regras de negócio, endpoints ou fluxos do sistema, leia o conteúdo relevante em `docs/` para garantir que a resposta esteja alinhada à documentação oficial.

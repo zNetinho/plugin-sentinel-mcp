@@ -1,0 +1,11 @@
+{
+  "name": "agency-plugin",
+  "version": "1.0.0",
+  "description": "Plugin da agência: regras, skills e agentes para padronizar desenvolvimento e revisão de código",
+  "author": {
+    "name": "Sua Agência",
+    "email": ""
+  },
+  "keywords": ["agência", "code-review", "padrões", "desenvolvimento"],
+  "logo": "assets/logo.svg"
+}

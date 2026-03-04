@@ -1,0 +1,12 @@
+---
+description: Padrões de código da agência — nomenclatura, formatação e boas práticas
+alwaysApply: true
+---
+
+# Padrões de código da agência
+
+- Use nomes descritivos em português ou inglês conforme convenção do projeto.
+- Prefira `const` para valores que não são reatribuídos; use `let` apenas quando necessário.
+- Mantenha funções pequenas e com responsabilidade única.
+- Documente APIs públicas e decisões não óbvias com comentários ou JSDoc quando fizer sentido.
+- Siga o style guide já definido no projeto (ESLint/Prettier se existir).
