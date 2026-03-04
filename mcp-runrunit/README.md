@@ -2,6 +2,17 @@
 
 Servidor MCP (Model Context Protocol) para comunicação com a API do [Runrun.it](https://runrun.it). Expõe ferramentas de **Tasks** e **Comments** para uso no Cursor ou em outros clientes MCP.
 
+## Como o MCP fica disponível para outras pessoas?
+
+- **Não existe um servidor MCP central** que hospeda seu código. O MCP é um **processo que roda na máquina de quem usa** (ou em um servidor que a pessoa/empresa controla).
+- **Quem usa precisa:**
+  1. Ter o código deste servidor (clonar o repositório do plugin ou, no futuro, instalar um pacote npm).
+  2. Rodar em **Node.js**: `npm install` + `npm run build` na pasta `mcp-runrunit`.
+  3. Configurar o **Cursor** (ou outro cliente MCP) para **iniciar esse processo** e passar as variáveis de ambiente (credenciais Runrun.it).
+- O Cursor então **abre o processo** (`node .../dist/index.js`) e se comunica com ele por **stdio** (entrada/saída padrão). Ou seja: o “servidor” MCP é só um script Node.js que o Cursor executa e com o qual troca mensagens JSON-RPC.
+
+**Resumo:** O plugin do Cursor (regras, skills, agentes) pode ser publicado no marketplace. O **MCP Runrun.it** é distribuído junto com o repositório (ou via npm); cada pessoa instala, compila e configura no próprio Cursor com as credenciais dela. Não há um “servidor em nuvem” do MCP — ele roda em Node.js onde o usuário quiser (local ou servidor próprio).
+
 ## Autenticação
 
 A API do Runrun.it exige dois headers em toda requisição:
@@ -45,6 +56,51 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
 ```
 
 Use o caminho absoluto para `dist/index.js` no seu ambiente.
+
+## Testar o MCP localmente (HTTP)
+
+Antes do deploy, você pode subir um servidor HTTP local e apontar o Cursor para a URL. Assim as tools podem ser testadas sem usar stdio.
+
+1. **Suba o servidor HTTP** (na pasta `mcp-runrunit`):
+
+```bash
+npm run build
+npm run start
+```
+
+Por padrão o servidor fica em `http://127.0.0.1:3000/mcp`. Variáveis opcionais:
+
+- `MCP_HTTP_PORT` — porta (padrão: 3000)
+- `MCP_HTTP_HOST` — host (padrão: 127.0.0.1)
+- `MCP_HTTP_PATH` — path do endpoint MCP (padrão: /mcp)
+
+2. **Configure o Cursor para usar só a URL** — não use `command`/`args` para esse servidor, senão o Cursor pode usar stdio e dar "Server already initialized". Exemplo em `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "runrunit": {
+      "url": "http://127.0.0.1:3000/mcp",
+      "env": {
+        "RUNRUNIT_APP_KEY": "sua_app_key",
+        "RUNRUNIT_USER_TOKEN": "seu_user_token"
+      }
+    }
+  }
+}
+```
+
+3. Mantenha o servidor rodando (`npm run start`) enquanto usar o Cursor. No terminal deve aparecer `mcp-runrunit: nova sessão ...` a cada conexão; se não aparecer, o Cursor está falando com outro processo (stdio). O endpoint `GET /health` retorna `{"status":"ok","mcp":"runrunit"}` para checagem rápida.
+
+Depois dos testes, use a configuração por processo (stdio) acima para uso normal.
+
+### Como outra pessoa usa (resumo)
+
+1. Clonar o repositório (ou baixar a pasta `mcp-runrunit`).
+2. Na pasta: `npm install` e `npm run build`.
+3. No Cursor: adicionar este MCP na configuração com `command`: `node`, `args`: caminho para `dist/index.js`, e `env` com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
+
+O processo Node.js sobe só quando o Cursor precisar falar com o Runrun.it; não precisa deixar nenhum servidor rodando à parte.
 
 ## Ferramentas (Tools)
 

@@ -43,6 +43,7 @@ export async function runrunitFetch<T>(
   const url = buildUrl(path, query);
 
   const headers: Record<string, string> = {
+    "Version": "HTTP/1.0",
     "App-Key": appKey,
     "User-Token": userToken,
     "Content-Type": "application/json",
