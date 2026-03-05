@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server";
 import * as tasks from "../../application/tasks.js";
 import * as comments from "../../application/comments.js";
+import * as devSuggestions from "../../application/dev_suggestions.js";
 import { RunrunitAPIError } from "../driven/api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -170,6 +171,76 @@ export const TOOLS = [
       required: ["comment_id", "emoji"],
     },
   },
+  {
+    name: "runrunit_suggest_devs_with_free_queue",
+    description:
+      "Sugere desenvolvedores com fila mais livre com base em tarefas na coluna Task, considerando estimativas e filtros opcionais (time, projeto, tags).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        limit: {
+          type: "number",
+          description: "Número máximo de devs sugeridos (1 a 10, padrão 3).",
+          minimum: 1,
+          maximum: 10,
+        },
+        team_id: {
+          type: "string",
+          description: "ID de time para filtrar desenvolvedores.",
+        },
+        tribe_id: {
+          type: "string",
+          description: "ID de tribo para filtrar desenvolvedores.",
+        },
+        squad_id: {
+          type: "string",
+          description: "ID de squad para filtrar desenvolvedores.",
+        },
+        project_tag: {
+          type: "string",
+          description: "Tag de projeto para filtrar tarefas.",
+        },
+        project_id: {
+          type: "number",
+          description: "ID de projeto para filtrar tarefas.",
+        },
+        developer_ids: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Lista explícita de IDs de desenvolvedores candidatos (Runrun.it).",
+        },
+        only_active_devs: {
+          type: "boolean",
+          description:
+            "Se verdadeiro, tenta considerar apenas desenvolvedores ativos (por exemplo, não de férias).",
+        },
+        board_id: {
+          type: "number",
+          description:
+            "ID do board Kanban onde está a coluna Task. Necessário se task_stage_ids não for informado.",
+        },
+        task_stage_ids: {
+          type: "array",
+          items: { type: "number" },
+          description:
+            "IDs de estágios/colunas que representam a coluna Task. Se não informado, tenta identificar por convenção de nome no board informado.",
+        },
+        load_strategy: {
+          type: "string",
+          enum: ["tasks_and_time", "only_tasks", "only_time"],
+          description:
+            "Estratégia de cálculo de carga: tasks_and_time (padrão), only_tasks ou only_time.",
+        },
+        include_zero_tasks: {
+          type: "boolean",
+          description:
+            "Se verdadeiro, inclui devs elegíveis sem tarefas na coluna Task (carga zero).",
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 function textContent(text: string): { type: "text"; text: string }[] {
@@ -271,6 +342,28 @@ export function createMcpServer(): Server {
         case "runrunit_comment_reaction":
           result = await comments.commentReaction(Number(a.comment_id), String(a.emoji));
           break;
+        case "runrunit_suggest_devs_with_free_queue": {
+          const params = {
+            limit: a.limit as number | undefined,
+            team_id: a.team_id as string | undefined,
+            tribe_id: a.tribe_id as string | undefined,
+            squad_id: a.squad_id as string | undefined,
+            project_tag: a.project_tag as string | undefined,
+            project_id: a.project_id as number | undefined,
+            developer_ids: a.developer_ids as string[] | undefined,
+            only_active_devs: a.only_active_devs as boolean | undefined,
+            board_id: a.board_id as number | undefined,
+            task_stage_ids: a.task_stage_ids as number[] | undefined,
+            load_strategy: a.load_strategy as
+              | "tasks_and_time"
+              | "only_tasks"
+              | "only_time"
+              | undefined,
+            include_zero_tasks: a.include_zero_tasks as boolean | undefined,
+          };
+          result = await devSuggestions.suggestDevsWithFreeQueue(params);
+          break;
+        }
         default:
           return {
             content: textContent(`Unknown tool: ${name}`),
