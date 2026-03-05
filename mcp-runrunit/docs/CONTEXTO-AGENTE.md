@@ -32,6 +32,7 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 | Ver comentários de uma tarefa | `runrunit_list_task_comments` | Exige `task_id`. |
 | Ver um comentário específico | `runrunit_get_comment` | Exige `id` do comentário. |
 | **Criar** comentário em tarefa | `runrunit_create_comment` | Exige `task_id` e `text`. |
+| **Criar** comentário na sessão externa (compartilhada com clientes) | `runrunit_create_external_comment` | Exige `task_id` e `text`. Envia `channel_name: "guest"` para a API. |
 | **Editar** texto do comentário | `runrunit_update_comment` | Exige `id` e `text`. |
 | **Excluir** comentário | `runrunit_delete_comment` | Exige `id`. |
 | Adicionar reação (emoji) | `runrunit_comment_reaction` | Exige `comment_id` e `emoji` (ex.: `"👍"`). |
@@ -40,7 +41,7 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 
 | Intenção do usuário | Tool recomendada | Observação |
 |---------------------|------------------|------------|
-| Encontrar dev com fila mais livre / sugerir quem pode pegar tarefa | `runrunit_suggest_devs_with_free_queue` (Sentinel) | **Obrigatório** informar `board_id` e/ou `task_stage_ids` para identificar a coluna "Task" do Kanban. Usar `board_id: 96356` (Ongoing) se não houver outro definido. Por padrão inclui devs **sem** tarefas na coluna Task (aparecem primeiro); o critério "menos tarefas" só ordena quando todos têm tarefas. Opcionais: `team_id`, `tribe_id`, `squad_id`, `project_id`, `project_tag`, `limit` (1–10), `include_zero_tasks` (padrão true), `only_active_devs`. |
+| Encontrar dev com fila mais livre / sugerir quem pode pegar tarefa | `runrunit_suggest_devs_with_free_queue` (Sentinel) | **Obrigatório** informar `board_id` e/ou `task_stage_ids` para identificar a coluna "Task" do Kanban. Usar `board_id: 96356` (Ongoing) se não houver outro definido. Por padrão inclui **todos** os devs elegíveis (incl. quem tem **zero** tarefas na coluna Task, que aparecem primeiro); o critério "menos tarefas" só ordena entre quem tem tarefas. Por padrão considera **somente desenvolvedores** (`only_developers: true`), excluindo Gestor, Social, Inovação e outras áreas não-dev. Opcionais: `team_id`, `tribe_id`, `squad_id`, `project_id`, `project_tag`, `limit` (1–10), `include_zero_tasks` (padrão true), `only_developers` (padrão true), `only_active_devs`. |
 
 ---
 

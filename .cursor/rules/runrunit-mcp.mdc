@@ -10,7 +10,7 @@ Ao usar o servidor MCP **runrunit** (Runrun.it):
 1. **Escolha a tool pela intenção**
    - Listar tarefas/comentários → `runrunit_list_tasks` / `runrunit_list_task_comments` (use filtros: `project_id`, `is_closed`, `page`, `limit`).
    - Ver um recurso → `runrunit_get_task` / `runrunit_get_comment` (exige `id` numérico).
-   - Criar → `runrunit_create_task` (obrigatório: `title`, `type_id`) ou `runrunit_create_comment` (`task_id`, `text`).
+   - Criar → `runrunit_create_task` (obrigatório: `title`, `type_id`) ou `runrunit_create_comment` (`task_id`, `text`). Comentário na sessão externa (compartilhada com clientes) → `runrunit_create_external_comment` (`task_id`, `text`).
    - Alterar → `runrunit_update_task` (`id` + `task` com **apenas os campos a alterar**) ou `runrunit_update_comment` (`id`, `text`).
    - Excluir → `runrunit_delete_task` / `runrunit_delete_comment` (exige `id`).
 

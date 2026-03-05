@@ -134,6 +134,7 @@ O processo Node.js sobe só quando o Cursor precisar falar com o Runrun.it; não
 | `runrunit_list_task_comments` | Lista comentários de uma tarefa |
 | `runrunit_get_comment` | Retorna um comentário pelo ID |
 | `runrunit_create_comment` | Cria comentário em tarefa (task_id, text) |
+| `runrunit_create_external_comment` | Cria comentário na sessão externa/guest (compartilhada com clientes; channel_name: guest) |
 | `runrunit_update_comment` | Edita o texto de um comentário |
 | `runrunit_delete_comment` | Remove um comentário |
 | `runrunit_comment_reaction` | Adiciona reação (emoji) a um comentário |
