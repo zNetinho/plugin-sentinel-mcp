@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import express from "express";
 import type { Request, Response } from "express";
-import { createMcpServer } from "./app.js";
+import { createMcpServer } from "./adapters/driving/app.js";
 import type { Server } from "@modelcontextprotocol/sdk/server";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

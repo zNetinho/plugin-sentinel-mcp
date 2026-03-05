@@ -13,6 +13,55 @@ Servidor MCP (Model Context Protocol) para comunicação com a API do [Runrun.it
 
 **Resumo:** O plugin do Cursor (regras, skills, agentes) pode ser publicado no marketplace. O **MCP Runrun.it** é distribuído junto com o repositório (ou via npm); cada pessoa instala, compila e configura no próprio Cursor com as credenciais dela. Não há um “servidor em nuvem” do MCP — ele roda em Node.js onde o usuário quiser (local ou servidor próprio).
 
+## Arquitetura
+
+O projeto adota o padrão **Arquitetura Hexagonal** (Ports & Adapters): o núcleo da aplicação fica isolado de detalhes de transporte (stdio, HTTP) e do cliente HTTP do Runrun.it. As **portas** definem contratos de entrada (MCP) e saída (acesso à API); os **adaptadores** implementam esses contratos (transporte e cliente HTTP).
+
+### Mapeamento no projeto
+
+- **Núcleo / aplicação:** regras e orquestração dos casos de uso (Tasks e Comments). Arquivos: `src/application/tasks.ts`, `src/application/comments.ts`; em uma evolução podem depender apenas de uma abstração de "cliente Runrun.it" (porta de saída).
+- **Porta de entrada (driving):** protocolo MCP (ListTools, CallTool). Implementada em `src/adapters/driving/app.ts` (registro de tools e handler que delega para a aplicação).
+- **Adaptadores de entrada:** como o MCP é acessado — `src/index.ts` (stdio) e `src/server.ts` (HTTP). Ambos usam o mesmo `createMcpServer()`.
+- **Porta de saída (driven):** contrato para acessar o Runrun.it (listar/criar tarefas, comentários, etc.). Hoje usada implicitamente; em uma evolução pode ser uma interface TypeScript injetada.
+- **Adaptador de saída:** implementação HTTP da API Runrun.it em `src/adapters/driven/api.ts` (auth, `runrunitFetch`, tratamento de erros).
+
+### Fluxo
+
+```mermaid
+flowchart LR
+  subgraph driving [Driving]
+    Client[Cursor / Cliente MCP]
+    Transport[Adaptadores stdio / HTTP]
+    MCP[app.ts - MCP Tools]
+  end
+  subgraph core [Núcleo]
+    App[Application - tasks.ts / comments.ts]
+  end
+  subgraph driven [Driven]
+    Port[Porta Runrun.it]
+    Adapter[api.ts - Cliente HTTP]
+    API[API Runrun.it]
+  end
+  Client --> Transport
+  Transport --> MCP
+  MCP --> App
+  App --> Port
+  Port --> Adapter
+  Adapter --> API
+```
+
+### Estrutura de pastas
+
+| Pasta / Arquivos | Papel |
+|------------------|--------|
+| `src/index.ts`, `src/server.ts` | Pontos de entrada (adaptadores de transporte stdio e HTTP) |
+| `src/domain/` | Domínio (tipos e portas para evolução futura) |
+| `src/application/` | Núcleo de aplicação: `tasks.ts`, `comments.ts` (casos de uso) |
+| `src/adapters/driving/` | Adaptador de entrada: `app.ts` (MCP — definição de tools e handler CallTool) |
+| `src/adapters/driven/` | Adaptador de saída: `api.ts` (cliente HTTP Runrun.it) |
+
+A separação permite trocar o transporte (stdio vs HTTP) sem alterar o núcleo e, no futuro, mockar ou trocar a implementação da API Runrun.it para testes ou outros backends.
+
 ## Autenticação
 
 A API do Runrun.it exige dois headers em toda requisição:
@@ -45,7 +94,7 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
   "mcpServers": {
     "runrunit": {
       "command": "node",
-      "args": ["D:/Cursor Plugin/mcp-runrunit/dist/index.js"],
+      "args": ["caminho-do-repositório-local/mcp-runrunit/dist/index.js"],
       "env": {
         "RUNRUNIT_APP_KEY": "sua_app_key",
         "RUNRUNIT_USER_TOKEN": "seu_user_token"
@@ -56,43 +105,6 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
 ```
 
 Use o caminho absoluto para `dist/index.js` no seu ambiente.
-
-## Testar o MCP localmente (HTTP)
-
-Antes do deploy, você pode subir um servidor HTTP local e apontar o Cursor para a URL. Assim as tools podem ser testadas sem usar stdio.
-
-1. **Suba o servidor HTTP** (na pasta `mcp-runrunit`):
-
-```bash
-npm run build
-npm run start
-```
-
-Por padrão o servidor fica em `http://127.0.0.1:3000/mcp`. Variáveis opcionais:
-
-- `MCP_HTTP_PORT` — porta (padrão: 3000)
-- `MCP_HTTP_HOST` — host (padrão: 127.0.0.1)
-- `MCP_HTTP_PATH` — path do endpoint MCP (padrão: /mcp)
-
-2. **Configure o Cursor para usar só a URL** — não use `command`/`args` para esse servidor, senão o Cursor pode usar stdio e dar "Server already initialized". Exemplo em `.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "runrunit": {
-      "url": "http://127.0.0.1:3000/mcp",
-      "env": {
-        "RUNRUNIT_APP_KEY": "sua_app_key",
-        "RUNRUNIT_USER_TOKEN": "seu_user_token"
-      }
-    }
-  }
-}
-```
-
-3. Mantenha o servidor rodando (`npm run start`) enquanto usar o Cursor. No terminal deve aparecer `mcp-runrunit: nova sessão ...` a cada conexão; se não aparecer, o Cursor está falando com outro processo (stdio). O endpoint `GET /health` retorna `{"status":"ok","mcp":"runrunit"}` para checagem rápida.
-
-Depois dos testes, use a configuração por processo (stdio) acima para uso normal.
 
 ### Como outra pessoa usa (resumo)
 
