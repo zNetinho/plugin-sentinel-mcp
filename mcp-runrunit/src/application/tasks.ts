@@ -1,4 +1,4 @@
-import { runrunitFetch } from "./api.js";
+import { runrunitFetch } from "../adapters/driven/api.js";
 
 export type ListTasksParams = {
   ids?: string;
