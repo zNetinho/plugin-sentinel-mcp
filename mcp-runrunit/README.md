@@ -110,9 +110,17 @@ Use o caminho absoluto para `dist/index.js` no seu ambiente.
 
 1. Clonar o repositório (ou baixar a pasta `mcp-runrunit`).
 2. Na pasta: `npm install` e `npm run build`.
-3. No Cursor: adicionar este MCP na configuração com `command`: `node`, `args`: caminho para `dist/index.js`, e `env` com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
-
-O processo Node.js sobe só quando o Cursor precisar falar com o Runrun.it; não precisa deixar nenhum servidor rodando à parte.
+3. Crie um .env com as variáveis `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
+4. No Cursor: adicionar este MCP na configuração com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
+"nome-do-mcp": {
+      "url": "http://127.0.0.1:3000/mcp", // vai estar rodando local.
+      "env": {
+        "RUNRUNIT_APP_KEY": "APP_KEY",
+        "RUNRUNIT_USER_TOKEN": "USER_TOKEN"
+      }
+    },
+5. rode o comandao `cd mcp-runrunit && npm run start`
+6. Servidor iniciado, confira na janela de MCPs se o mesmo aparece ativo.
 
 ## Ferramentas (Tools)
 
