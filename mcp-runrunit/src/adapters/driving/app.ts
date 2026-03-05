@@ -172,6 +172,19 @@ export const TOOLS = [
     },
   },
   {
+    name: "runrunit_create_external_comment",
+    description:
+      "Create a comment in the external/guest channel on a task in Runrun.it. Use this for comments shared with external clients (channel_name: guest).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task_id: { type: "number", description: "Task ID" },
+        text: { type: "string", description: "Comment text" },
+      },
+      required: ["task_id", "text"],
+    },
+  },
+  {
     name: "runrunit_suggest_devs_with_free_queue",
     description:
       "Sugere desenvolvedores com fila mais livre com base em tarefas na coluna Task, considerando estimativas e filtros opcionais (time, projeto, tags).",
@@ -235,7 +248,12 @@ export const TOOLS = [
         include_zero_tasks: {
           type: "boolean",
           description:
-            "Se verdadeiro, inclui devs elegíveis sem tarefas na coluna Task (carga zero).",
+            "Se verdadeiro, inclui devs elegíveis sem tarefas na coluna Task (padrão true).",
+        },
+        only_developers: {
+          type: "boolean",
+          description:
+            "Se verdadeiro, considera apenas desenvolvedores; exclui Gestor, Social, Inovação, etc. (padrão true).",
         },
       },
       required: [],
@@ -342,6 +360,12 @@ export function createMcpServer(): Server {
         case "runrunit_comment_reaction":
           result = await comments.commentReaction(Number(a.comment_id), String(a.emoji));
           break;
+        case "runrunit_create_external_comment":
+          result = await comments.createExternalComment(
+            Number(a.task_id),
+            String(a.text),
+          );
+          break;
         case "runrunit_suggest_devs_with_free_queue": {
           const params = {
             limit: a.limit as number | undefined,
@@ -360,6 +384,7 @@ export function createMcpServer(): Server {
               | "only_time"
               | undefined,
             include_zero_tasks: a.include_zero_tasks as boolean | undefined,
+            only_developers: a.only_developers as boolean | undefined,
           };
           result = await devSuggestions.suggestDevsWithFreeQueue(params);
           break;
