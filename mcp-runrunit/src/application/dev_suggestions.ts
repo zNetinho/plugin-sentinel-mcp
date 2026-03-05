@@ -2,6 +2,15 @@ import { runrunitFetch } from "../adapters/driven/api.js";
 
 export type LoadStrategy = "tasks_and_time" | "only_tasks" | "only_time";
 
+/** Termos de cargo/área que excluem o usuário quando only_developers = true (case-insensitive). */
+const DEFAULT_EXCLUDED_ROLE_TERMS = [
+  "gestor",
+  "gestora",
+  "social",
+  "inovação",
+  "inovacao",
+];
+
 export type SuggestDevsInput = {
   limit?: number;
   team_id?: string;
@@ -14,7 +23,10 @@ export type SuggestDevsInput = {
   board_id?: number;
   task_stage_ids?: number[];
   load_strategy?: LoadStrategy;
+  /** Incluir devs com zero tarefas na coluna Task (padrão true). */
   include_zero_tasks?: boolean;
+  /** Considerar apenas desenvolvedores; exclui Gestor, Social, Inovação, etc. (padrão true). */
+  only_developers?: boolean;
 };
 
 type BoardStage = {
@@ -29,6 +41,8 @@ type User = {
   name: string;
   on_vacation?: boolean;
   team_ids?: number[];
+  /** Runrun.it pode retornar cargo/área; usamos name quando não houver. */
+  role?: string | null;
 };
 
 type TaskAssignment = {
@@ -132,11 +146,29 @@ function isUserActive(user: User, onlyActiveDevs?: boolean): boolean {
   return !user.on_vacation;
 }
 
+/** Extrai o cargo/área do nome (ex.: "João - Gestor" => "Gestor"). */
+function getRoleFromUser(user: User): string {
+  const role = user.role?.trim();
+  if (role) return role;
+  const dash = user.name.indexOf(" - ");
+  if (dash >= 0) return user.name.slice(dash + 3).trim();
+  return "";
+}
+
+/** Verifica se o usuário deve ser excluído por cargo (Gestor, Social, Inovação, etc.). */
+function isExcludedByRole(user: User, onlyDevelopers: boolean): boolean {
+  if (!onlyDevelopers) return false;
+  const role = getRoleFromUser(user).toLowerCase();
+  if (!role) return false;
+  return DEFAULT_EXCLUDED_ROLE_TERMS.some((term) => role.includes(term));
+}
+
 function userMatchesFilters(
   user: User,
   input: SuggestDevsInput
 ): boolean {
   if (!isUserActive(user, input.only_active_devs)) return false;
+  if (isExcludedByRole(user, input.only_developers !== false)) return false;
 
   const name = user.name.toLowerCase();
   const nonDeveloperKeywords = [
@@ -291,9 +323,10 @@ export async function suggestDevsWithFreeQueue(
           project_id: input.project_id,
           developer_ids: input.developer_ids,
           only_active_devs: input.only_active_devs,
-          board_id: boardId,
+          only_developers: input.only_developers !== false,
+          board_id: input.board_id,
           load_strategy: loadStrategy,
-          include_zero_tasks: includeZeroTasks,
+          include_zero_tasks: input.include_zero_tasks !== false,
         },
         task_stage_ids_used: taskStageIds,
       };
@@ -363,7 +396,7 @@ export async function suggestDevsWithFreeQueue(
       const aggregate = loadByDev.get(user.id);
 
       if (!aggregate) {
-        if (!includeZeroTasks) continue;
+        if (input.include_zero_tasks === false) continue;
 
         suggestions.push({
           developer_id: user.id,
@@ -417,9 +450,10 @@ export async function suggestDevsWithFreeQueue(
           project_id: input.project_id,
           developer_ids: input.developer_ids,
           only_active_devs: input.only_active_devs,
-          board_id: boardId,
+          only_developers: input.only_developers !== false,
+          board_id: input.board_id,
           load_strategy: loadStrategy,
-          include_zero_tasks: includeZeroTasks,
+          include_zero_tasks: input.include_zero_tasks !== false,
         },
         task_stage_ids_used: taskStageIds,
       };
@@ -450,9 +484,10 @@ export async function suggestDevsWithFreeQueue(
         project_id: input.project_id,
         developer_ids: input.developer_ids,
         only_active_devs: input.only_active_devs,
-          board_id: boardId,
+        only_developers: input.only_developers !== false,
+        board_id: input.board_id,
         load_strategy: loadStrategy,
-        include_zero_tasks: includeZeroTasks,
+        include_zero_tasks: input.include_zero_tasks !== false,
       },
       task_stage_ids_used: taskStageIds,
     };
