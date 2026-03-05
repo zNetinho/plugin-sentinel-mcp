@@ -50,6 +50,7 @@ type TaskAssignment = {
   team_id: number | null;
   current_estimate_seconds?: number | null;
   time_worked?: number | null;
+   is_closed?: boolean | null;
 };
 
 type Task = {
@@ -67,7 +68,7 @@ export type DeveloperSuggestion = {
   developer_name: string;
   task_count_in_task_column: number;
   total_estimated_load: number;
-  load_unit: "hours";
+  load_unit: "hours" | "tasks";
   justification: string;
   tasks?: Array<{ id: number; title: string }>;
 };
@@ -169,6 +170,40 @@ function userMatchesFilters(
   if (!isUserActive(user, input.only_active_devs)) return false;
   if (isExcludedByRole(user, input.only_developers !== false)) return false;
 
+  const name = user.name.toLowerCase();
+  const nonDeveloperKeywords = [
+    "gestor",
+    "manager",
+    "coord ",
+    "coordenador",
+    "coordenadora",
+    "chapter lead",
+    "lead ",
+    "líder",
+    "liderança",
+    "head ",
+    "director",
+    "diretor",
+    "diretora",
+    "social media",
+    "marketing",
+    "ux ",
+    "designer",
+    "product ",
+    "po ",
+    "pm ",
+    "analista de negócios",
+    "business",
+    "suporte",
+    "support",
+    "customer success",
+    "cs ",
+  ];
+
+  if (nonDeveloperKeywords.some((keyword) => name.includes(keyword))) {
+    return false;
+  }
+
   if (input.developer_ids && input.developer_ids.length > 0) {
     if (!input.developer_ids.includes(user.id)) return false;
   }
@@ -245,17 +280,20 @@ export async function suggestDevsWithFreeQueue(
   try {
     const limit = normalizeLimit(input.limit);
     const loadStrategy: LoadStrategy = input.load_strategy ?? "tasks_and_time";
+    const includeZeroTasks = input.include_zero_tasks ?? true;
+    // Default board: Ongoing (ID 96356) when none is provided.
+    const boardId = input.board_id ?? 96356;
 
     const [users, boardStages, tasks] = await Promise.all([
       fetchUsers(),
-      input.board_id ? fetchBoardStages(input.board_id) : Promise.resolve<BoardStage[]>([]),
+      boardId ? fetchBoardStages(boardId) : Promise.resolve<BoardStage[]>([]),
       fetchTasks({ project_id: input.project_id }),
     ]);
 
     const taskStageIds =
       input.task_stage_ids && input.task_stage_ids.length > 0
         ? input.task_stage_ids
-        : input.board_id
+        : boardId
           ? resolveTaskStageIds(input, boardStages)
           : [];
 
@@ -314,6 +352,10 @@ export async function suggestDevsWithFreeQueue(
     for (const task of tasksInTaskStage) {
       const assignments = task.assignments ?? [];
       for (const assignment of assignments) {
+        if (assignment.is_closed) {
+          continue;
+        }
+
         const devId = assignment.assignee_id;
 
         if (!eligibleUserIds.has(devId)) continue;
@@ -368,22 +410,27 @@ export async function suggestDevsWithFreeQueue(
         continue;
       }
 
-      const hours =
-        loadStrategy === "only_tasks"
-          ? aggregate.totalSeconds
-          : secondsToHours(aggregate.totalSeconds);
+      let totalLoad: number;
+      let loadUnit: "hours" | "tasks";
+      let justification: string;
 
-      const justification =
-        loadStrategy === "only_tasks"
-          ? `${aggregate.taskCount} tarefas na coluna Task.`
-          : `${aggregate.taskCount} tarefas na coluna Task, carga total aproximada de ${hours} horas.`;
+      if (loadStrategy === "only_tasks") {
+        totalLoad = aggregate.taskCount;
+        loadUnit = "tasks";
+        justification = `${aggregate.taskCount} tarefas na coluna Task.`;
+      } else {
+        const hours = secondsToHours(aggregate.totalSeconds);
+        totalLoad = hours;
+        loadUnit = "hours";
+        justification = `${aggregate.taskCount} tarefas na coluna Task, carga total aproximada de ${hours} horas.`;
+      }
 
       suggestions.push({
         developer_id: user.id,
         developer_name: user.name,
         task_count_in_task_column: aggregate.taskCount,
-        total_estimated_load: hours,
-        load_unit: "hours",
+        total_estimated_load: totalLoad,
+        load_unit: loadUnit,
         justification,
         tasks: aggregate.tasks,
       });
