@@ -120,12 +120,16 @@ O processo Node.js sobe só quando o Cursor precisar falar com o Runrun.it; não
 
 | Ferramenta | Descrição |
 |------------|-----------|
-| `runrunit_list_tasks` | Lista tarefas com filtros opcionais (ids, project_id, is_closed, sort, page, limit, etc.) |
+| `runrunit_list_tasks` | Lista tarefas com filtros opcionais (ids, responsible_id, assignee_id, filter_id, board_stage_id, project_id, etc.) |
+| `runrunit_list_task_filters` | Lista filtros de tarefas (para obter filter_id de "Minhas partes abertas") |
+| `runrunit_list_board_stages` | Lista stages do board (Task, Ongoing, Manager Validation) — use para obter board_stage_id ao mover tarefas |
 | `runrunit_get_task` | Retorna uma tarefa pelo ID |
 | `runrunit_list_subtasks` | Lista subtarefas de uma tarefa |
 | `runrunit_create_task` | Cria tarefa (obrigatório: title, type_id; opcional: project_id, assignments, desired_date, etc.) |
-| `runrunit_update_task` | Atualiza tarefa (id + objeto com campos a atualizar) |
+| `runrunit_update_task` | Atualiza tarefa (id + objeto com campos a atualizar, ex.: board_stage_id) |
 | `runrunit_delete_task` | Remove uma tarefa |
+| `runrunit_create_workflow` | Cria workflow para uma tarefa (permite iniciar tracking) |
+| `runrunit_assignment_play` | Inicia tracking (play) em um assignment de tarefa |
 
 ### Comments
 
@@ -140,7 +144,7 @@ O processo Node.js sobe só quando o Cursor precisar falar com o Runrun.it; não
 
 ## Documentação da API
 
-Os endpoints seguem a documentação oficial do Runrun.it. No repositório do plugin, a pasta `docs/` contém os markdowns de referência (por exemplo `docs/Tasks.md` e `docs/Comments.md`). Use `docs/Indíce.md` para localizar os demais endpoints.
+Os endpoints seguem a documentação oficial do Runrun.it. No repositório do plugin, a pasta `docs/` contém os markdowns de referência (por exemplo `docs/Tasks.md` e `docs/Comments.md`). Use `docs/Indíce.md` para localizar os demais endpoints. Para configurar o fluxo de trabalho (Task, Ongoing, Manager Validation), consulte `docs/Workflow-Config-Exemplo.md`.
 
 ## Base URL da API
 
