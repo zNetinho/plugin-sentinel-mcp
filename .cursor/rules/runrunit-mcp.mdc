@@ -1,0 +1,28 @@
+---
+description: Uso assertivo das tools MCP Runrun.it (tasks e comments)
+alwaysApply: true
+---
+
+# MCP Runrun.it – Uso das tools
+
+Ao usar o servidor MCP **runrunit** (Runrun.it):
+
+1. **Escolha a tool pela intenção**
+   - Listar tarefas/comentários → `runrunit_list_tasks` / `runrunit_list_task_comments` (use filtros: `project_id`, `is_closed`, `page`, `limit`).
+   - Ver um recurso → `runrunit_get_task` / `runrunit_get_comment` (exige `id` numérico).
+   - Criar → `runrunit_create_task` (obrigatório: `title`, `type_id`) ou `runrunit_create_comment` (`task_id`, `text`).
+   - Alterar → `runrunit_update_task` (`id` + `task` com **apenas os campos a alterar**) ou `runrunit_update_comment` (`id`, `text`).
+   - Excluir → `runrunit_delete_task` / `runrunit_delete_comment` (exige `id`).
+
+2. **Tipos e formatos**
+   - IDs sempre **número** (não string). Datas em **ISO 8601** (ex.: `desired_date: "2025-03-15"`).
+   - Em `runrunit_list_tasks`, o filtro `ids` é string com IDs separados por vírgula: `"1,2,3"`.
+   - `sort_dir` apenas `"asc"` ou `"desc"`. `limit` entre 1 e 100.
+
+3. **Boas práticas**
+   - Evitar muitas chamadas seguidas (rate limit ~100 req/min). Usar filtros e paginação em listagens.
+   - Em update de task, enviar só o que muda em `task` (ex.: `{ title: "Novo título" }`).
+   - Se faltar ID, listar com filtros e depois usar `get_task`/`get_comment` se precisar de detalhes.
+
+4. **Contexto completo**
+   - Regras detalhadas, fluxos e glossário: `mcp-runrunit/docs/CONTEXTO-AGENTE.md`.

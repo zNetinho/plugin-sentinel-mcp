@@ -126,6 +126,14 @@ O processo Node.js sobe só quando o Cursor precisar falar com o Runrun.it; não
 | `runrunit_delete_comment` | Remove um comentário |
 | `runrunit_comment_reaction` | Adiciona reação (emoji) a um comentário |
 
+## Contexto para o agente (uso assertivo das tools)
+
+Para que o Cursor/IA use as tools de forma assertiva e inteligente, consulte:
+
+- **`docs/CONTEXTO-AGENTE.md`** — quando usar cada tool, parâmetros (tipos, formatos), fluxos recomendados, erros comuns e glossário Runrun.it.
+
+No workspace do plugin existe também a regra **Runrun.it MCP** em `.cursor/rules/runrunit-mcp.mdc`, que resume essas orientações para o agente.
+
 ## Documentação da API
 
 Os endpoints seguem a documentação oficial do Runrun.it. No repositório do plugin, a pasta `docs/` contém os markdowns de referência (por exemplo `docs/Tasks.md` e `docs/Comments.md`). Use `docs/Indíce.md` para localizar os demais endpoints.
