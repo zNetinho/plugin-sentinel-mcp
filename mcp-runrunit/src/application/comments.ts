@@ -1,4 +1,4 @@
-import { runrunitFetch } from "./api.js";
+import { runrunitFetch } from "../adapters/driven/api.js";
 
 export async function listTaskComments(taskId: number) {
   return runrunitFetch<unknown[]>(`tasks/${taskId}/comments`);

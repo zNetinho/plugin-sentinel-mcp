@@ -2,14 +2,14 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server";
-import * as tasks from "./tasks.js";
+import * as tasks from "../../application/tasks.js";
+import * as comments from "../../application/comments.js";
+import { RunrunitAPIError } from "../driven/api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const sdkTypesPath = path.join(__dirname, "..", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "types.js");
+const sdkTypesPath = path.join(__dirname, "..", "..", "..", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "types.js");
 const { CallToolRequestSchema, ListToolsRequestSchema } = require(sdkTypesPath);
-import * as comments from "./comments.js";
-import { RunrunitAPIError } from "./api.js";
 
 export const TOOLS = [
   {
