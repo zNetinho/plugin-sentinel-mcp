@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server";
 import * as tasks from "../../application/tasks.js";
 import * as comments from "../../application/comments.js";
+import * as projects from "../../application/projects.js";
 import * as devSuggestions from "../../application/dev_suggestions.js";
+import { detectPlatformFromTask } from "../../application/detect_platform.js";
 import { RunrunitAPIError } from "../driven/api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -13,6 +15,23 @@ const sdkTypesPath = path.join(__dirname, "..", "..", "..", "node_modules", "@mo
 const { CallToolRequestSchema, ListToolsRequestSchema } = require(sdkTypesPath);
 
 export const TOOLS = [
+  {
+    name: "runrunit_list_projects",
+    description:
+      "List all projects from Runrun.it. Optional filters: client_id, project_group_id, is_closed, is_active, page, limit.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        client_id: { type: "number", description: "Filter by client ID" },
+        project_group_id: { type: "number", description: "Filter by project group ID" },
+        is_closed: { type: "boolean", description: "Filter by closed state" },
+        is_active: { type: "boolean", description: "Filter by active state" },
+        page: { type: "number", description: "Page number (default 1)" },
+        limit: { type: "number", description: "Items per page (1-100)" },
+      },
+      required: [],
+    },
+  },
   {
     name: "runrunit_list_tasks",
     description:
@@ -259,6 +278,21 @@ export const TOOLS = [
       required: [],
     },
   },
+  {
+    name: "runrunit_project_detect_platform",
+    description:
+      "Identifica a plataforma do projeto a partir das tags da task no Runrun.it (Node, Python, Ruby, Go, Rust, etc.) e sugere o comando para subir o ambiente de desenvolvimento. A plataforma é definida pelas tags da task (tags_data/tag_list), não pelos arquivos do repositório.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task_id: {
+          type: "number",
+          description: "ID da task no Runrun.it. As tags dessa task definem a plataforma (ex.: node, react, python).",
+        },
+      },
+      required: ["task_id"],
+    },
+  },
 ];
 
 function textContent(text: string): { type: "text"; text: string }[] {
@@ -294,6 +328,18 @@ export function createMcpServer(): Server {
       let result: unknown;
 
       switch (name) {
+        case "runrunit_list_projects": {
+          const params = {
+            client_id: a.client_id as number | undefined,
+            project_group_id: a.project_group_id as number | undefined,
+            is_closed: a.is_closed as boolean | undefined,
+            is_active: a.is_active as boolean | undefined,
+            page: a.page as number | undefined,
+            limit: a.limit as number | undefined,
+          };
+          result = await projects.listProjects(params);
+          break;
+        }
         case "runrunit_list_tasks": {
           const params = {
             ids: a.ids as string | undefined,
@@ -387,6 +433,39 @@ export function createMcpServer(): Server {
             only_developers: a.only_developers as boolean | undefined,
           };
           result = await devSuggestions.suggestDevsWithFreeQueue(params);
+          break;
+        }
+        case "runrunit_project_detect_platform": {
+          const taskId = Number(a.task_id);
+          if (!Number.isInteger(taskId) || taskId < 1) {
+            result = {
+              detected: false,
+              message: "task_id deve ser um número inteiro positivo (ID da task no Runrun.it).",
+            };
+            break;
+          }
+          const task = (await tasks.getTask(taskId)) as Parameters<typeof detectPlatformFromTask>[0];
+          const detected = detectPlatformFromTask(task);
+          if (detected === null) {
+            result = {
+              detected: false,
+              message:
+                "Nenhuma plataforma conhecida encontrada nas tags da task. Adicione tags como node, react, python, php, go, rust, etc. na task no Runrun.it para identificar a plataforma.",
+              task_id: taskId,
+            };
+          } else {
+            result = {
+              detected: true,
+              platform: detected.platform,
+              platform_label: detected.platformLabel,
+              start_command: detected.startCommand,
+              alternate_commands: detected.alternateCommands,
+              package_manager: detected.packageManager,
+              detected_by: detected.detectedBy,
+              hint: detected.hint,
+              task_id: taskId,
+            };
+          }
           break;
         }
         default:

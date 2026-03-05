@@ -8,6 +8,8 @@ alwaysApply: true
 Ao usar o servidor MCP **runrunit** (Runrun.it):
 
 1. **Escolha a tool pela intenção**
+   - **Projeto (start do ambiente):** identificar plataforma e comando para subir o dev → `runrunit_project_detect_platform` (obrigatório: `task_id`). A plataforma é definida pelas **tags da task** no Runrun.it (ex.: node, react, python). Facilita o processo de start do projeto.
+   - Listar projetos → `runrunit_list_projects` (opcional: `client_id`, `project_group_id`, `is_closed`, `is_active`, `page`, `limit`).
    - Listar tarefas/comentários → `runrunit_list_tasks` / `runrunit_list_task_comments` (use filtros: `project_id`, `is_closed`, `page`, `limit`).
    - Ver um recurso → `runrunit_get_task` / `runrunit_get_comment` (exige `id` numérico).
    - Criar → `runrunit_create_task` (obrigatório: `title`, `type_id`) ou `runrunit_create_comment` (`task_id`, `text`). Comentário na sessão externa (compartilhada com clientes) → `runrunit_create_external_comment` (`task_id`, `text`).
