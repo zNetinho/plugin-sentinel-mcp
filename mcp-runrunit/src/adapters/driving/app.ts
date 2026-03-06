@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server";
 import * as tasks from "../../application/tasks.js";
 import * as comments from "../../application/comments.js";
+import { taskUpdateToApiPayload } from "../driven/custom_fields_mapper.js";
 import * as projects from "../../application/projects.js";
 import * as devSuggestions from "../../application/dev_suggestions.js";
 import { detectPlatformFromTask } from "../../application/detect_platform.js";
@@ -104,14 +105,23 @@ export const TOOLS = [
   {
     name: "runrunit_update_task",
     description:
-      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date).",
+      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32).",
     inputSchema: {
       type: "object" as const,
       properties: {
         id: { type: "number", description: "Task ID" },
         task: {
           type: "object",
-          description: "Fields to update (e.g. { title: 'New title' })",
+          description:
+            "Fields to update (e.g. { title: 'New title' }, { link_da_branch: 'https://github.com/.../pull/21' }). link_da_branch maps to custom field Link da branch.",
+          properties: {
+            title: { type: "string", description: "Task title" },
+            desired_date: { type: "string", description: "Desired date (ISO)" },
+            link_da_branch: {
+              type: "string",
+              description: "URL of the PR or branch (stored in custom field 'Link da branch', e.g. https://github.com/org/repo/pull/21)",
+            },
+          },
           additionalProperties: true,
         },
       },
@@ -147,12 +157,15 @@ export const TOOLS = [
   },
   {
     name: "runrunit_create_comment",
-    description: "Create a comment on a task in Runrun.it.",
+    description:
+      "Create a comment on a task in Runrun.it. Runrun.it does not support Markdown in comments; use plain text and raw URLs only. Optional: url_antes and url_depois. When both are provided, the agent should obtain visual evidence (e.g. use skill registrar-evidencias: capture screenshots, upload to Cloudinary), then append to the comment text plain labels and URLs (e.g. 'Antes: https://...' and 'Depois: https://...'), and call this tool with the enriched text.",
     inputSchema: {
       type: "object" as const,
       properties: {
         task_id: { type: "number", description: "Task ID" },
-        text: { type: "string", description: "Comment text" },
+        text: { type: "string", description: "Comment text (can be enriched with an evidence block when url_antes/url_depois are used)" },
+        url_antes: { type: "string", description: "Optional. URL of the page in the 'before' state; when provided with url_depois, agent should capture evidence and append it to text" },
+        url_depois: { type: "string", description: "Optional. URL of the page in the 'after' state; when provided with url_antes, agent should capture evidence and append it to text" },
       },
       required: ["task_id", "text"],
     },
@@ -377,9 +390,11 @@ export function createMcpServer(): Server {
           });
           break;
         }
-        case "runrunit_update_task":
-          result = await tasks.updateTask(Number(a.id), { task: a.task as Record<string, unknown> });
+        case "runrunit_update_task": {
+          const taskPayload = taskUpdateToApiPayload(a.task as Record<string, unknown>);
+          result = await tasks.updateTask(Number(a.id), { task: taskPayload });
           break;
+        }
         case "runrunit_delete_task":
           await tasks.deleteTask(Number(a.id));
           result = { deleted: true, id: a.id };
