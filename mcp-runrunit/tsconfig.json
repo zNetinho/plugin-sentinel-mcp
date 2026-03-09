@@ -14,5 +14,6 @@
       "@modelcontextprotocol/sdk/server/stdio": ["./node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.d.ts"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/index.ts"]
 }
