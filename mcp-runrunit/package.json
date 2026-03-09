@@ -10,6 +10,8 @@
   },
   "files": [
     "dist",
+    "cursor-skills",
+    ".env.example",
     "README.md",
     "LICENSE"
   ],

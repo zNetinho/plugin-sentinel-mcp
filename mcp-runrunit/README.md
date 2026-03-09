@@ -74,6 +74,12 @@ Configure as variáveis de ambiente (ou no JSON de configuração do MCP no Curs
 - `RUNRUNIT_APP_KEY` — chave da aplicação
 - `RUNRUNIT_USER_TOKEN` — token do usuário
 
+**Cloudinary** (opcional, para as skills de evidências e upload de imagens):
+
+- `CLOUDINARY_CLOUD_NAME` — nome da cloud no Cloudinary
+- `CLOUDINARY_API_KEY` — API key
+- `CLOUDINARY_API_SECRET` — API secret (nunca expor no client-side)
+
 ## Por que dava erro no pacote npm e funcionava só localmente?
 
 - **Quando você usa `npx mcp-runrunit`**, o npm instala o pacote em uma pasta (ex.: `node_modules/mcp-runrunit/`) e instala as dependências dentro dela (ex.: `node_modules/mcp-runrunit/node_modules/@modelcontextprotocol/sdk/`). O binário que o Cursor executa é `dist/index.js` desse pacote instalado.
@@ -106,7 +112,10 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
       "args": ["caminho-do-repositório-local/mcp-runrunit/dist/index.js"],
       "env": {
         "RUNRUNIT_APP_KEY": "sua_app_key",
-        "RUNRUNIT_USER_TOKEN": "seu_user_token"
+        "RUNRUNIT_USER_TOKEN": "seu_user_token",
+        "CLOUDINARY_CLOUD_NAME": "sua_cloud",
+        "CLOUDINARY_API_KEY": "sua_api_key",
+        "CLOUDINARY_API_SECRET": "seu_api_secret"
       }
     }
   }
@@ -127,12 +136,24 @@ Depois de publicado no npm, qualquer pessoa pode usar com `npx` sem clonar o rep
       "args": ["-y", "mcp-runrunit"],
       "env": {
         "RUNRUNIT_APP_KEY": "sua_app_key",
-        "RUNRUNIT_USER_TOKEN": "seu_user_token"
+        "RUNRUNIT_USER_TOKEN": "seu_user_token",
+        "CLOUDINARY_CLOUD_NAME": "sua_cloud",
+        "CLOUDINARY_API_KEY": "sua_api_key",
+        "CLOUDINARY_API_SECRET": "seu_api_secret"
       }
     }
   }
 }
 ```
+
+## Cursor Skills (evidências, PR, comentários na task)
+
+O pacote inclui a pasta `cursor-skills/` com skills para uso no Cursor: **registrar-evidencias**, **upload-image-cloudinary**, **create-pr-github**, **comentar-task-runrunit**, **code-reviewer**. Para o Cursor descobri-las, copie (ou crie link) das pastas em `node_modules/mcp-runrunit/cursor-skills/` para um destes diretórios:
+
+- **Global:** `~/.cursor/skills/` (ex.: `~/.cursor/skills/registrar-evidencias`, etc.)
+- **Por projeto:** `.cursor/skills/` ou `.agents/skills/` na raiz do projeto
+
+As skills que fazem upload de imagens (evidências em PRs e comentários Runrun.it) usam **Cloudinary**; configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e `CLOUDINARY_API_SECRET` no `env` do MCP ou no ambiente.
 
 ## Publicar como pacote npm e no MCP Registry
 
@@ -183,14 +204,17 @@ Ao atualizar a versão, altere `version` em `package.json` e em `server.json` (e
 
 1. Clonar o repositório (ou baixar a pasta `mcp-runrunit`).
 2. Na pasta: `npm install` e `npm run build`.
-3. Crie um .env com as variáveis `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
-4. No Cursor: adicionar este MCP na configuração com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`. Exemplo para servidor HTTP local:
+3. Crie um `.env` com as variáveis (use `.env.example` como referência): `RUNRUNIT_APP_KEY`, `RUNRUNIT_USER_TOKEN` e, se for usar evidências/Cloudinary, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+4. No Cursor: adicionar este MCP na configuração com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN` (e opcionalmente as variáveis Cloudinary). Exemplo para servidor HTTP local:
    ```json
    "runrunit": {
      "url": "http://127.0.0.1:3000/mcp",
      "env": {
        "RUNRUNIT_APP_KEY": "APP_KEY",
-       "RUNRUNIT_USER_TOKEN": "USER_TOKEN"
+       "RUNRUNIT_USER_TOKEN": "USER_TOKEN",
+       "CLOUDINARY_CLOUD_NAME": "sua_cloud",
+       "CLOUDINARY_API_KEY": "sua_api_key",
+       "CLOUDINARY_API_SECRET": "seu_api_secret"
      }
    }
    ```
