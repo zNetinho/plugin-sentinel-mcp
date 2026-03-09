@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server";
 import * as tasks from "../../application/tasks.js";
 import * as comments from "../../application/comments.js";
-import { taskUpdateToApiPayload } from "../driven/custom_fields_mapper.js";
+import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
 import * as projects from "../../application/projects.js";
 import * as devSuggestions from "../../application/dev_suggestions.js";
 import { detectPlatformFromTask } from "../../application/detect_platform.js";

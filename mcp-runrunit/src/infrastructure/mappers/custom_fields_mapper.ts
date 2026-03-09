@@ -17,6 +17,21 @@ export const CUSTOM_FIELD_SEMANTIC_KEYS: Record<string, string> = Object.fromEnt
 
 export type TaskUpdatePayload = Record<string, unknown>;
 
+interface CustomFieldObject {
+  id: string;
+  color: string | null;
+  label: string;
+}
+
+function isCustomFieldObject(v: unknown): v is CustomFieldObject {
+  return typeof v === "object" && v !== null && "label" in v;
+}
+
+/** Extracts the usable value from a custom field (handles both plain and object shapes). */
+function normalizeCustomFieldValue(v: unknown): unknown {
+  return isCustomFieldObject(v) ? v.label : v;
+}
+
 /**
  * Converts a task update payload that may contain semantic custom field names
  * (e.g. link_da_branch) into the shape expected by the Runrun.it API
@@ -53,7 +68,8 @@ export function taskFromApiToSemantic(task: TaskUpdatePayload): TaskUpdatePayloa
   const result = { ...task };
   const mappedCustom: Record<string, unknown> = {};
 
-  for (const [apiKey, value] of Object.entries(customFields)) {
+  for (const [apiKey, rawValue] of Object.entries(customFields)) {
+    const value = normalizeCustomFieldValue(rawValue);
     const semanticKey = CUSTOM_FIELD_SEMANTIC_KEYS[apiKey];
     if (semanticKey) {
       (result as Record<string, unknown>)[semanticKey] = value;
