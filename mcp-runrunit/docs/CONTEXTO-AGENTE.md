@@ -65,7 +65,16 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 2. **Criar comentário**
    - Garantir que `task_id` existe (ex.: usuário acabou de listar/abrir a tarefa, ou chamar antes `runrunit_get_task` para validar).
 
-3. **Evitar muitas chamadas**
+3. **Comentar na tarefa com evidências e link da PR (fluxo completo)**
+   - **Ordem obrigatória:**  
+     1. Chamar a skill [registrar-evidencias](skills/registrar-evidencias/SKILL.md) (URL antes, URL depois) para capturar screenshots.  
+     2. Chamar a skill [upload-image-cloudinary](skills/upload-image-cloudinary/SKILL.md) com as imagens de evidências e obter as `secure_url`.  
+     3. **Chamar a skill [create-pr-github](skills/create-pr-github/SKILL.md) para abrir a PR e obter a URL da PR — passo obrigatório; o link é necessário para os passos 5 e 6. Nunca pule este passo.**  
+     4. Com as URLs das evidências (antes/depois) e **a URL da PR**, montar um resumo do que foi feito (ex.: histórico do que foi alterado, alinhado aos comentários do GitHub).  
+     5. Criar o comentário na task com `runrunit_create_comment`: texto do resumo + **Link da PR: \<url_da_pr>** + evidências em texto simples (Runrun.it não aceita Markdown), ex.: `Antes: <secure_url>` e `Depois: <secure_url>`.  
+     6. Atualizar a task com o link da PR: `runrunit_update_task(id, { task: { link_da_branch: "<url_da_pr>" } })`. O campo `link_da_branch` é mapeado internamente para o custom field "Link da branch" (ex.: `custom_32`). **Sempre** preencher com a URL obtida no passo 3.
+
+4. **Evitar muitas chamadas**
    - Preferir `runrunit_list_tasks` com `limit` e filtros em vez de várias `runrunit_get_task` em sequência quando só precisar de resumo.
    - Para “listar e depois atualizar uma”, usar: `list_tasks` (ou `get_task` se já tiver o ID) → `update_task`.
 
@@ -93,6 +102,7 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 - **Comments:** comentários podem ser em uma **task** (`task_id`) ou em um **project** (API suporta `project_id` + `text`; a tool atual expõe apenas comentário em tarefa com `task_id` + `text`).
 - **board_id:** ID do board Kanban no Runrun.it; usado pela tool de sugestão de devs (Sentinel) para localizar a coluna "Task". Ex.: `96356` (Ongoing).
 - **task_stage_ids:** IDs dos estágios/colunas do Kanban que representam a coluna "Task". Se não informado, o Sentinel tenta inferir por nome (ex.: stage com "Task" no nome) quando `board_id` é informado.
+- **custom_fields / link_da_branch:** A API usa chaves opacas (ex.: `custom_32`) para campos customizados. O MCP expõe o campo "Link da branch" (URL da PR) como **link_da_branch** em `runrunit_update_task`: ao enviar `task: { link_da_branch: "https://github.com/..." }`, o valor é gravado no custom field correspondente (ex.: `custom_32`).
 
 ---
 

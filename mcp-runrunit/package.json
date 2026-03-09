@@ -1,12 +1,28 @@
 {
   "name": "mcp-runrunit",
-  "version": "1.0.0",
-  "description": "MCP server for Runrun.it API - Tasks and Comments",
+  "version": "1.0.1",
+  "description": "MCP server for Runrun.it API - Tasks, Comments, Projects",
   "type": "module",
   "main": "dist/index.js",
+  "mcpName": "io.github.zNetinho/runrunit-n1",
+  "bin": {
+    "mcp-runrunit": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zNetinho/plugin-sentinel-mcp.git"
+  },
   "scripts": {
     "build": "tsc",
+    "bundle": "node scripts/bundle.mjs",
+    "postbuild": "node scripts/bundle.mjs",
     "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
     "start": "node --env-file=.env dist/server.js",
     "dev": "npm run build && node --env-file=.env dist/server.js"
   },
@@ -21,9 +37,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^20.0.0",
+    "esbuild": "^0.24.2",
     "typescript": "^5.0.0"
-  },
-  "bin": {
-    "mcp-runrunit": "./dist/index.js"
   }
 }

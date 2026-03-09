@@ -1,18 +1,38 @@
-import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Server } from "@modelcontextprotocol/sdk/server";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import * as tasks from "../../application/tasks.js";
 import * as comments from "../../application/comments.js";
+import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
+import * as projects from "../../application/projects.js";
 import * as devSuggestions from "../../application/dev_suggestions.js";
+import { detectPlatformFromTask } from "../../application/detect_platform.js";
 import { RunrunitAPIError } from "../driven/api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-const sdkTypesPath = path.join(__dirname, "..", "..", "..", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "types.js");
-const { CallToolRequestSchema, ListToolsRequestSchema } = require(sdkTypesPath);
 
 export const TOOLS = [
+  {
+    name: "runrunit_list_projects",
+    description:
+      "List all projects from Runrun.it. Optional filters: client_id, project_group_id, is_closed, is_active, page, limit.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        client_id: { type: "number", description: "Filter by client ID" },
+        project_group_id: { type: "number", description: "Filter by project group ID" },
+        is_closed: { type: "boolean", description: "Filter by closed state" },
+        is_active: { type: "boolean", description: "Filter by active state" },
+        page: { type: "number", description: "Page number (default 1)" },
+        limit: { type: "number", description: "Items per page (1-100)" },
+      },
+      required: [],
+    },
+  },
   {
     name: "runrunit_list_tasks",
     description:
@@ -85,14 +105,23 @@ export const TOOLS = [
   {
     name: "runrunit_update_task",
     description:
-      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date).",
+      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32).",
     inputSchema: {
       type: "object" as const,
       properties: {
         id: { type: "number", description: "Task ID" },
         task: {
           type: "object",
-          description: "Fields to update (e.g. { title: 'New title' })",
+          description:
+            "Fields to update (e.g. { title: 'New title' }, { link_da_branch: 'https://github.com/.../pull/21' }). link_da_branch maps to custom field Link da branch.",
+          properties: {
+            title: { type: "string", description: "Task title" },
+            desired_date: { type: "string", description: "Desired date (ISO)" },
+            link_da_branch: {
+              type: "string",
+              description: "URL of the PR or branch (stored in custom field 'Link da branch', e.g. https://github.com/org/repo/pull/21)",
+            },
+          },
           additionalProperties: true,
         },
       },
@@ -128,12 +157,15 @@ export const TOOLS = [
   },
   {
     name: "runrunit_create_comment",
-    description: "Create a comment on a task in Runrun.it.",
+    description:
+      "Create a comment on a task in Runrun.it. Runrun.it does not support Markdown in comments; use plain text and raw URLs only. Optional: url_antes and url_depois. When both are provided, the agent should obtain visual evidence (e.g. use skill registrar-evidencias: capture screenshots, upload to Cloudinary), then append to the comment text plain labels and URLs (e.g. 'Antes: https://...' and 'Depois: https://...'), and call this tool with the enriched text.",
     inputSchema: {
       type: "object" as const,
       properties: {
         task_id: { type: "number", description: "Task ID" },
-        text: { type: "string", description: "Comment text" },
+        text: { type: "string", description: "Comment text (can be enriched with an evidence block when url_antes/url_depois are used)" },
+        url_antes: { type: "string", description: "Optional. URL of the page in the 'before' state; when provided with url_depois, agent should capture evidence and append it to text" },
+        url_depois: { type: "string", description: "Optional. URL of the page in the 'after' state; when provided with url_antes, agent should capture evidence and append it to text" },
       },
       required: ["task_id", "text"],
     },
@@ -259,6 +291,21 @@ export const TOOLS = [
       required: [],
     },
   },
+  {
+    name: "runrunit_project_detect_platform",
+    description:
+      "Identifica a plataforma do projeto a partir das tags da task no Runrun.it (Node, Python, Ruby, Go, Rust, etc.) e sugere o comando para subir o ambiente de desenvolvimento. A plataforma é definida pelas tags da task (tags_data/tag_list), não pelos arquivos do repositório.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task_id: {
+          type: "number",
+          description: "ID da task no Runrun.it. As tags dessa task definem a plataforma (ex.: node, react, python).",
+        },
+      },
+      required: ["task_id"],
+    },
+  },
 ];
 
 function textContent(text: string): { type: "text"; text: string }[] {
@@ -294,6 +341,18 @@ export function createMcpServer(): Server {
       let result: unknown;
 
       switch (name) {
+        case "runrunit_list_projects": {
+          const params = {
+            client_id: a.client_id as number | undefined,
+            project_group_id: a.project_group_id as number | undefined,
+            is_closed: a.is_closed as boolean | undefined,
+            is_active: a.is_active as boolean | undefined,
+            page: a.page as number | undefined,
+            limit: a.limit as number | undefined,
+          };
+          result = await projects.listProjects(params);
+          break;
+        }
         case "runrunit_list_tasks": {
           const params = {
             ids: a.ids as string | undefined,
@@ -331,9 +390,11 @@ export function createMcpServer(): Server {
           });
           break;
         }
-        case "runrunit_update_task":
-          result = await tasks.updateTask(Number(a.id), { task: a.task as Record<string, unknown> });
+        case "runrunit_update_task": {
+          const taskPayload = taskUpdateToApiPayload(a.task as Record<string, unknown>);
+          result = await tasks.updateTask(Number(a.id), { task: taskPayload });
           break;
+        }
         case "runrunit_delete_task":
           await tasks.deleteTask(Number(a.id));
           result = { deleted: true, id: a.id };
@@ -387,6 +448,39 @@ export function createMcpServer(): Server {
             only_developers: a.only_developers as boolean | undefined,
           };
           result = await devSuggestions.suggestDevsWithFreeQueue(params);
+          break;
+        }
+        case "runrunit_project_detect_platform": {
+          const taskId = Number(a.task_id);
+          if (!Number.isInteger(taskId) || taskId < 1) {
+            result = {
+              detected: false,
+              message: "task_id deve ser um número inteiro positivo (ID da task no Runrun.it).",
+            };
+            break;
+          }
+          const task = (await tasks.getTask(taskId)) as Parameters<typeof detectPlatformFromTask>[0];
+          const detected = detectPlatformFromTask(task);
+          if (detected === null) {
+            result = {
+              detected: false,
+              message:
+                "Nenhuma plataforma conhecida encontrada nas tags da task. Adicione tags como node, react, python, php, go, rust, etc. na task no Runrun.it para identificar a plataforma.",
+              task_id: taskId,
+            };
+          } else {
+            result = {
+              detected: true,
+              platform: detected.platform,
+              platform_label: detected.platformLabel,
+              start_command: detected.startCommand,
+              alternate_commands: detected.alternateCommands,
+              package_manager: detected.packageManager,
+              detected_by: detected.detectedBy,
+              hint: detected.hint,
+              task_id: taskId,
+            };
+          }
           break;
         }
         default:
