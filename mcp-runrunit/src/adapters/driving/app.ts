@@ -11,6 +11,7 @@ import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fiel
 import * as projects from "../../application/projects.js";
 import * as devSuggestions from "../../application/dev_suggestions.js";
 import { detectPlatformFromTask } from "../../application/detect_platform.js";
+import { uploadImage as uploadImageCloudinary } from "../../application/cloudinary.js";
 import { RunrunitAPIError } from "../driven/api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -306,6 +307,25 @@ export const TOOLS = [
       required: ["task_id"],
     },
   },
+  {
+    name: "runrunit_upload_image_cloudinary",
+    description:
+      "Faz upload de uma imagem para a Cloudinary e retorna a URL pública (secure_url). Usa as variáveis CLOUDINARY_* já configuradas no MCP (ex.: em mcp.json). Use para screenshots, evidências, PRs e comentários.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Caminho absoluto ou relativo do arquivo de imagem no disco (ex.: path retornado por browser_take_screenshot).",
+        },
+        public_id: {
+          type: "string",
+          description: "ID público opcional na Cloudinary (ex.: pr-evidencia-desktop, docs-screenshot-1).",
+        },
+      },
+      required: ["file_path"],
+    },
+  },
 ];
 
 function textContent(text: string): { type: "text"; text: string }[] {
@@ -481,6 +501,13 @@ export function createMcpServer(): Server {
               task_id: taskId,
             };
           }
+          break;
+        }
+        case "runrunit_upload_image_cloudinary": {
+          result = await uploadImageCloudinary(
+            String(a.file_path),
+            a.public_id != null ? String(a.public_id) : undefined
+          );
           break;
         }
         default:
