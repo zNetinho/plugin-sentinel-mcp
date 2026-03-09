@@ -1,4 +1,5 @@
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
+#!/usr/bin/env node
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer } from "./adapters/driving/app.js";
 
 async function main() {

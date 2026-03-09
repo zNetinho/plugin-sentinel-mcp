@@ -1,7 +1,10 @@
-import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Server } from "@modelcontextprotocol/sdk/server";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import * as tasks from "../../application/tasks.js";
 import * as comments from "../../application/comments.js";
 import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
@@ -11,9 +14,6 @@ import { detectPlatformFromTask } from "../../application/detect_platform.js";
 import { RunrunitAPIError } from "../driven/api.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-const sdkTypesPath = path.join(__dirname, "..", "..", "..", "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "types.js");
-const { CallToolRequestSchema, ListToolsRequestSchema } = require(sdkTypesPath);
 
 export const TOOLS = [
   {

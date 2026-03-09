@@ -74,6 +74,15 @@ Configure as variáveis de ambiente (ou no JSON de configuração do MCP no Curs
 - `RUNRUNIT_APP_KEY` — chave da aplicação
 - `RUNRUNIT_USER_TOKEN` — token do usuário
 
+## Por que dava erro no pacote npm e funcionava só localmente?
+
+- **Quando você usa `npx mcp-runrunit`**, o npm instala o pacote em uma pasta (ex.: `node_modules/mcp-runrunit/`) e instala as dependências dentro dela (ex.: `node_modules/mcp-runrunit/node_modules/@modelcontextprotocol/sdk/`). O binário que o Cursor executa é `dist/index.js` desse pacote instalado.
+- **Se esse `dist/index.js` for o arquivo gerado só pelo TypeScript** (`tsc`), ele contém algo como `import ... from "@modelcontextprotocol/sdk/server/stdio.js"`. O Node então tenta resolver esse módulo dentro da pasta instalada. Em muitos ambientes (Windows, cache do npx, resolução ESM) essa resolução falha com `ERR_MODULE_NOT_FOUND`, mesmo com o SDK instalado ao lado — por isso o erro aparece “num pacote que está dentro do MCP”.
+- **Localmente funcionava** porque:
+  1. **Modo HTTP:** você rodava `npm run start` (servidor na porta 3000). O `server.ts` usa `require(caminho_absoluto)` para o SDK, sem depender da resolução ESM do Node, então não quebra.
+  2. **Modo stdio no repo:** depois de `npm run build`, o seu `dist/index.js` local é **substituído pelo bundle** (script `scripts/bundle.mjs`), que junta todo o código e o SDK em um único arquivo. Esse arquivo não importa mais nada do `@modelcontextprotocol/sdk`, então roda em qualquer lugar.
+- **Para o pacote publicado funcionar via npx**, o `dist/index.js` que vai no tarball do npm **tem que ser esse bundle**, não o output do `tsc`. Por isso o build exclui `src/index.ts` do `tsc` e gera `dist/index.js` só com o script de bundle. Ao publicar, use `npm run build` (ou deixe `prepublishOnly` rodar) e depois `npm publish`; assim quem usar `npx mcp-runrunit` recebe o binário já bundled e o erro deixa de ocorrer.
+
 ## Instalação
 
 ```bash
@@ -106,20 +115,86 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
 
 Use o caminho absoluto para `dist/index.js` no seu ambiente.
 
+### Uso via npm (para outras pessoas)
+
+Depois de publicado no npm, qualquer pessoa pode usar com `npx` sem clonar o repositório:
+
+```json
+{
+  "mcpServers": {
+    "runrunit": {
+      "command": "npx",
+      "args": ["-y", "mcp-runrunit"],
+      "env": {
+        "RUNRUNIT_APP_KEY": "sua_app_key",
+        "RUNRUNIT_USER_TOKEN": "seu_user_token"
+      }
+    }
+  }
+}
+```
+
+## Publicar como pacote npm e no MCP Registry
+
+Para que outras pessoas possam instalar o servidor via `npx mcp-runrunit` e listá-lo no [MCP Registry](https://registry.modelcontextprotocol.io):
+
+1. **Substitua placeholders**  
+   Em `package.json` e `server.json`, troque `YOUR_GITHUB_USERNAME` pelo seu usuário do GitHub (obrigatório para autenticação no Registry).
+
+2. **Publicar no npm**
+   ```bash
+   npm login
+   npm run build
+   npm publish --access public
+   ```
+   (Se usar pacote escopo, ex.: `@seu-usuario/mcp-runrunit`, use `npm publish --access public`.)
+
+3. **Instalar o mcp-publisher**  
+   [Download](https://github.com/modelcontextprotocol/registry/releases) do binário ou:
+   ```powershell
+   # Windows (PowerShell)
+   $arch = if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq "Arm64") { "arm64" } else { "amd64" }
+   Invoke-WebRequest -Uri "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_windows_$arch.tar.gz" -OutFile "mcp-publisher.tar.gz"
+   tar xf mcp-publisher.tar.gz mcp-publisher.exe
+   ```
+   Coloque `mcp-publisher.exe` em um diretório do PATH.
+
+4. **Autenticar no MCP Registry**
+   ```bash
+   mcp-publisher login github
+   ```
+   Siga o fluxo no navegador (código de dispositivo).
+
+5. **Publicar no MCP Registry**  
+   Aguarde ~10–15 minutos após o `npm publish` (propagação do CDN). Depois:
+   ```bash
+   mcp-publisher publish
+   ```
+   O `server.json` na raiz do projeto será enviado; o `name` em `server.json` deve ser igual ao `mcpName` em `package.json`.
+
+6. **Verificar**
+   ```bash
+   curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=runrunit"
+   ```
+
+Ao atualizar a versão, altere `version` em `package.json` e em `server.json` (e em `packages[0].version` no `server.json`), faça `npm publish` e, após a espera, `mcp-publisher publish`.
+
 ### Como outra pessoa usa (resumo)
 
 1. Clonar o repositório (ou baixar a pasta `mcp-runrunit`).
 2. Na pasta: `npm install` e `npm run build`.
 3. Crie um .env com as variáveis `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
-4. No Cursor: adicionar este MCP na configuração com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`.
-"nome-do-mcp": {
-      "url": "http://127.0.0.1:3000/mcp", // vai estar rodando local.
-      "env": {
-        "RUNRUNIT_APP_KEY": "APP_KEY",
-        "RUNRUNIT_USER_TOKEN": "USER_TOKEN"
-      }
-    },
-5. rode o comandao `cd mcp-runrunit && npm run start`
+4. No Cursor: adicionar este MCP na configuração com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN`. Exemplo para servidor HTTP local:
+   ```json
+   "runrunit": {
+     "url": "http://127.0.0.1:3000/mcp",
+     "env": {
+       "RUNRUNIT_APP_KEY": "APP_KEY",
+       "RUNRUNIT_USER_TOKEN": "USER_TOKEN"
+     }
+   }
+   ```
+5. Rode `cd mcp-runrunit && npm run start`
 6. Servidor iniciado, confira na janela de MCPs se o mesmo aparece ativo.
 
 ## Ferramentas (Tools)
