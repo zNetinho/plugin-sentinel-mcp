@@ -23,10 +23,7 @@
     "build": "tsc",
     "bundle": "node scripts/bundle.mjs",
     "postbuild": "node scripts/bundle.mjs",
-    "bundle": "node scripts/bundle.mjs",
-    "postbuild": "node scripts/bundle.mjs",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run build",
     "prepublishOnly": "npm run build",
     "start": "node --env-file=.env dist/server.js",
     "dev": "npm run build && node --env-file=.env dist/server.js"
@@ -42,7 +39,6 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^20.0.0",
-    "esbuild": "^0.24.2",
     "esbuild": "^0.24.2",
     "typescript": "^5.0.0"
   }

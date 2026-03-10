@@ -50,7 +50,7 @@ const TAG_TO_PLATFORM: TagMapping[] = [
     hint: "Lembre-se de atualizar a url no comando, se o projeto usar yarn/pnpm/bun, use o lockfile correspondente (yarn.lock, pnpm-lock.yaml, bun.lockb).",
   },
   {
-    tagNames: ["VTEXIO", "VtexIO", "vtex io", "Vtex IO"],
+    tagNames: ["VTEXIO", "vtex io", "vtex"],
     platform: "vtex",
     platformLabel: "VTEX",
     startCommand: "vtex link",

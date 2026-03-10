@@ -1,20 +1,16 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import * as tasks from "../../application/tasks.js";
-import * as comments from "../../application/comments.js";
-import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
-import * as projects from "../../application/projects.js";
-import * as devSuggestions from "../../application/dev_suggestions.js";
-import { detectPlatformFromTask } from "../../application/detect_platform.js";
 import { uploadImage as uploadImageCloudinary } from "../../application/cloudinary.js";
+import * as comments from "../../application/comments.js";
+import { detectPlatformFromTask } from "../../application/detect_platform.js";
+import * as devSuggestions from "../../application/dev_suggestions.js";
+import * as projects from "../../application/projects.js";
+import * as tasks from "../../application/tasks.js";
+import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
 import { RunrunitAPIError } from "../driven/api.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const TOOLS = [
   /**
@@ -91,13 +87,16 @@ export const TOOLS = [
   {
     name: "runrunit_create_task",
     description:
-      "Create a task on Runrun.it. Requires title and type_id. Optional: project_id, assignments, desired_date, etc.",
+      "Create a task on Runrun.it in board Ongoing (ID: 96356) in column Task by default. Requires title and type_id. Optional: project_id, assignments, desired_date, etc.",
     inputSchema: {
       type: "object" as const,
       properties: {
         title: { type: "string", description: "Task title" },
         type_id: { type: "number", description: "Task type ID" },
         project_id: { type: "number", description: "Project ID" },
+        project_name: { type: "string", description: "Project name" },
+        board_name: { type: "string", description: "Board name" },
+        board_stage_name: { type: "string", description: "Board stage name" },
         on_going: { type: "boolean", description: "Ongoing task" },
         desired_date: { type: "string", description: "Desired delivery date (ISO)" },
         desired_start_date: { type: "string", description: "Desired start date (ISO)" },
