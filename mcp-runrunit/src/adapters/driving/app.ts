@@ -11,6 +11,7 @@ import * as projects from "../../application/projects.js";
 import * as tasks from "../../application/tasks.js";
 import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
 import { RunrunitAPIError } from "../driven/api.js";
+import path from "path";
 
 export const TOOLS = [
   /**
@@ -39,13 +40,17 @@ export const TOOLS = [
   {
     name: "runrunit_list_tasks",
     description:
-      "List tasks from Runrun.it. Optional filters: ids, user_id, follower_id, project_id, is_closed, is_working_on, sort, sort_dir, page, limit.",
+      "List tasks from Runrun.it. Optional filters: ids, user_id, follower_id, responsible_id, assignee_id, filter_id, board_stage_id, project_id, is_closed, is_working_on, sort, sort_dir, page, limit.",
     inputSchema: {
       type: "object" as const,
       properties: {
         ids: { type: "string", description: "Comma-separated task IDs" },
         user_id: { type: "string", description: "Creator user ID" },
         follower_id: { type: "string", description: "Follower user ID" },
+        responsible_id: { type: "string", description: "Responsible/assignee user ID (e.g. for 'Minhas partes abertas')" },
+        assignee_id: { type: "string", description: "Assignee/executor principal user ID" },
+        filter_id: { type: "number", description: "ID of a task filter (e.g. 'Minhas partes abertas')" },
+        board_stage_id: { type: "number", description: "Filter by board stage (e.g. Ongoing)" },
         project_id: { type: "number", description: "Project ID" },
         is_closed: { type: "boolean", description: "Filter by delivered tasks" },
         is_working_on: { type: "boolean", description: "Filter by in progress" },
@@ -57,9 +62,28 @@ export const TOOLS = [
       required: [],
     },
   },
-  /**
-   * @namedTools runrunit_get_task
-   */
+  {
+    name: "runrunit_list_task_filters",
+    description:
+      "List all task filters available to the current user. Use to find filter_id for 'Minhas partes abertas' or other filters.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "runrunit_list_board_stages",
+    description:
+      "List board stages (Task, Ongoing, Manager Validation, etc.). Use board_id from a task. Returns stages with id and name — use to get board_stage_id for runrunit_update_task when moving tasks.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        board_id: { type: "number", description: "Board ID (from task.board_id)" },
+      },
+      required: ["board_id"],
+    },
+  },
   {
     name: "runrunit_get_task",
     description: "Get a single task by ID from Runrun.it.",
@@ -122,8 +146,8 @@ export const TOOLS = [
    */
   {
     name: "runrunit_update_task",
-    description:
-      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32).",
+  description:
+    "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date, board_stage_id). Use board_stage_id to move tasks between columns (Task, Ongoing, Manager Validation). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32)",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -159,8 +183,32 @@ export const TOOLS = [
     },
   },
   /**
-   * @namedTools runrunit_list_task_comments
+   * @namedTools runrunit_create_workflow
    */
+  {
+    name: "runrunit_create_workflow",
+    description: "Create a workflow for a task (starts tracking eligibility). Task must not be closed, ongoing, or already have a workflow.",
+    inputSchema: {
+      type: "object" as const,
+      properties: { task_id: { type: "number", description: "Task ID" } },
+      required: ["task_id"],
+    },
+  },
+  /**
+   * @namedTools runrunit_assignment_play
+   */
+  {
+    name: "runrunit_assignment_play",
+    description: "Start tracking work on a task (play). Pauses current task if assignee is already working on another. Always ensure that the task is in the Ongoing column (board_stage_id: 96356) before calling this tool.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task_id: { type: "number", description: "Task ID" },
+        assignment_id: { type: "string", description: "Assignment ID (from task.assignments[].id)" },
+      },
+      required: ["task_id", "assignment_id"],
+    },
+  },
   {
     name: "runrunit_list_task_comments",
     description: "List all comments on a task in Runrun.it.",
@@ -428,6 +476,10 @@ export function createMcpServer(): Server {
             ids: a.ids as string | undefined,
             user_id: a.user_id as string | undefined,
             follower_id: a.follower_id as string | undefined,
+            responsible_id: a.responsible_id as string | undefined,
+            assignee_id: a.assignee_id as string | undefined,
+            filter_id: a.filter_id as number | string | undefined,
+            board_stage_id: a.board_stage_id as number | undefined,
             project_id: a.project_id as number | undefined,
             is_closed: a.is_closed as boolean | undefined,
             is_working_on: a.is_working_on as boolean | undefined,
@@ -439,6 +491,12 @@ export function createMcpServer(): Server {
           result = await tasks.listTasks(params);
           break;
         }
+        case "runrunit_list_task_filters":
+          result = await tasks.listTaskFilters();
+          break;
+        case "runrunit_list_board_stages":
+          result = await tasks.listBoardStages(Number(a.board_id));
+          break;
         case "runrunit_get_task":
           result = await tasks.getTask(Number(a.id));
           break;
@@ -450,7 +508,11 @@ export function createMcpServer(): Server {
             task: {
               title: String(a.title),
               type_id: Number(a.type_id),
+              board_stage_id: Number(a.board_stage_id),
+              board_name: String(a.board_name),
+              board_stage_name: String(a.board_stage_name),
               project_id: a.project_id != null ? Number(a.project_id) : undefined,
+              project_name: String(a.project_name),
               on_going: a.on_going as boolean | undefined,
               desired_date: a.desired_date != null ? String(a.desired_date) : undefined,
               desired_start_date: a.desired_start_date != null ? String(a.desired_start_date) : undefined,
@@ -461,13 +523,18 @@ export function createMcpServer(): Server {
           break;
         }
         case "runrunit_update_task": {
-          const taskPayload = taskUpdateToApiPayload(a.task as Record<string, unknown>);
-          result = await tasks.updateTask(Number(a.id), { task: taskPayload });
+          result = await tasks.updateTask(Number(a.id), { task: a.task as Record<string, unknown> });
           break;
         }
         case "runrunit_delete_task":
           await tasks.deleteTask(Number(a.id));
           result = { deleted: true, id: a.id };
+          break;
+        case "runrunit_create_workflow":
+          result = await tasks.createWorkflow(Number(a.task_id));
+          break;
+        case "runrunit_assignment_play":
+          result = await tasks.assignmentPlay(Number(a.task_id), String(a.assignment_id));
           break;
         case "runrunit_list_task_comments":
           result = await comments.listTaskComments(Number(a.task_id));
