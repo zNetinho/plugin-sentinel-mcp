@@ -17,6 +17,9 @@ import { RunrunitAPIError } from "../driven/api.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const TOOLS = [
+  /**
+   * @namedTools runrunit_list_projects
+   */
   {
     name: "runrunit_list_projects",
     description:
@@ -34,6 +37,9 @@ export const TOOLS = [
       required: [],
     },
   },
+  /**
+   * @namedTools runrunit_list_tasks
+   */
   {
     name: "runrunit_list_tasks",
     description:
@@ -55,6 +61,9 @@ export const TOOLS = [
       required: [],
     },
   },
+  /**
+   * @namedTools runrunit_get_task
+   */
   {
     name: "runrunit_get_task",
     description: "Get a single task by ID from Runrun.it.",
@@ -64,6 +73,9 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_list_subtasks
+   */
   {
     name: "runrunit_list_subtasks",
     description: "List subtasks of a task from Runrun.it.",
@@ -73,6 +85,9 @@ export const TOOLS = [
       required: ["task_id"],
     },
   },
+  /**
+   * @namedTools runrunit_create_task
+   */
   {
     name: "runrunit_create_task",
     description:
@@ -103,6 +118,9 @@ export const TOOLS = [
       required: ["title", "type_id"],
     },
   },
+  /**
+   * @namedTools runrunit_update_task
+   */
   {
     name: "runrunit_update_task",
     description:
@@ -129,6 +147,9 @@ export const TOOLS = [
       required: ["id", "task"],
     },
   },
+  /**
+   * @namedTools runrunit_delete_task
+   */
   {
     name: "runrunit_delete_task",
     description: "Delete a task on Runrun.it.",
@@ -138,6 +159,9 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_list_task_comments
+   */
   {
     name: "runrunit_list_task_comments",
     description: "List all comments on a task in Runrun.it.",
@@ -147,6 +171,9 @@ export const TOOLS = [
       required: ["task_id"],
     },
   },
+  /**
+   * @namedTools runrunit_get_comment
+   */
   {
     name: "runrunit_get_comment",
     description: "Get a single comment by ID from Runrun.it.",
@@ -156,10 +183,13 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_create_comment
+   */
   {
     name: "runrunit_create_comment",
     description:
-      "Create a comment on a task in Runrun.it. Runrun.it does not support Markdown in comments; use plain text and raw URLs only. Optional: url_antes and url_depois. When both are provided, the agent should obtain visual evidence (e.g. use skill registrar-evidencias: capture screenshots, upload to Cloudinary), then append to the comment text plain labels and URLs (e.g. 'Antes: https://...' and 'Depois: https://...'), and call this tool with the enriched text.",
+      "Create a comment on a task in Runrun.it. Format: plain text and raw URLs only (no Markdown). Optional url_antes + url_depois: when both are provided, (1) capture visual evidence (skill registrar-evidencias), (2) upload images (e.g. Cloudinary), (3) append to text plain labels and image URLs (e.g. 'Antes: <url>' and 'Depois: <url>'), (4) call this tool with the enriched text.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -171,6 +201,9 @@ export const TOOLS = [
       required: ["task_id", "text"],
     },
   },
+  /**
+   * @namedTools runrunit_update_comment
+   */
   {
     name: "runrunit_update_comment",
     description: "Update a comment's text on Runrun.it.",
@@ -183,6 +216,9 @@ export const TOOLS = [
       required: ["id", "text"],
     },
   },
+  /**
+   * @namedTools runrunit_delete_comment
+   */
   {
     name: "runrunit_delete_comment",
     description: "Delete a comment on Runrun.it.",
@@ -192,6 +228,9 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_comment_reaction
+   */
   {
     name: "runrunit_comment_reaction",
     description: "Add a reaction (emoji) to a comment on Runrun.it.",
@@ -204,10 +243,13 @@ export const TOOLS = [
       required: ["comment_id", "emoji"],
     },
   },
+  /**
+   * @namedTools runrunit_create_external_comment
+   */
   {
     name: "runrunit_create_external_comment",
     description:
-      "Create a comment in the external/guest channel on a task in Runrun.it. Use this for comments shared with external clients (channel_name: guest).",
+      "For create a comment in the external/guest channel on a task in Runrun.it, use only text simple, without Markdown. Use this for comments shared with external clients (channel_name: guest).",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -217,6 +259,9 @@ export const TOOLS = [
       required: ["task_id", "text"],
     },
   },
+  /**
+   * @namedTools runrunit_suggest_devs_with_free_queue
+   */
   {
     name: "runrunit_suggest_devs_with_free_queue",
     description:
@@ -292,10 +337,13 @@ export const TOOLS = [
       required: [],
     },
   },
+  /**
+   * @namedTools runrunit_project_detect_platform
+   */
   {
     name: "runrunit_project_detect_platform",
     description:
-      "Identifica a plataforma do projeto a partir das tags da task no Runrun.it (Node, Python, Ruby, Go, Rust, etc.) e sugere o comando para subir o ambiente de desenvolvimento. A plataforma é definida pelas tags da task (tags_data/tag_list), não pelos arquivos do repositório.",
+      "Identifies the project platform based on task tags in Runrun.it (Node, Python, Ruby, Go, Rust, etc.) and suggests the command to upload the development environment. The platform is defined by task tags (tags_data/tag_list), not by repository files.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -307,6 +355,9 @@ export const TOOLS = [
       required: ["task_id"],
     },
   },
+  /**
+   * @namedTools runrunit_upload_image_cloudinary
+   */
   {
     name: "runrunit_upload_image_cloudinary",
     description:
