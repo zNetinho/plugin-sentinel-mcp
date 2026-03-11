@@ -1,0 +1,131 @@
+---
+description: Fluxo de trabalho Runrunit — contextos dos cards (Task, Ongoing, Manager Validation) e início de demanda
+alwaysApply: true
+---
+
+# Fluxo de trabalho Runrunit
+
+## Gatilhos — EXECUTE o fluxo completo
+
+Quando o usuário disser **"iniciar task"**, **"iniciar task [ID]"**, **"iniciar a tarefa"**, **"começar a task"**, **"iniciar a demanda"** ou similar referindo-se a uma tarefa específica:
+
+1. **EXECUTE** — chame as ferramentas `runrunit_*` e `git`. Não descreva apenas; faça as chamadas.
+2. **Fluxo completo** — siga todas as etapas (0 → 1 → 2). Não pare após Git; a tarefa deve estar em Ongoing com tracking rodando.
+3. **Se já existe Ongoing** — pergunte "A tarefa [nome] volta para Task ou Manager Validation?". Se o usuário já respondeu na mesma mensagem (ex.: "passe a outra para Task"), use essa resposta e execute imediatamente.
+
+### ORDEM OBRIGATÓRIA — Iniciar Task ID (NUNCA inverta)
+
+Ao iniciar uma task pelo ID, a sequência é **sempre**:
+
+1. **TIRAR** a outra task que está em Ongoing (reajuste) — mover para Task ou Manager Validation.
+2. **MOVER** a task com o ID solicitado para a coluna Ongoing.
+3. **INICIAR** o tracking (`runrunit_create_workflow` + `runrunit_assignment_play`).
+
+**PROIBIDO:** Dar só tracking e ignorar os passos 1 e 2. Se você fizer apenas `runrunit_assignment_play`, o fluxo está **errado**.
+
+---
+
+## Contextos dos cards
+
+| Nome no Board | Significado | Regra |
+|---------------|-------------|-------|
+| **Task** | Backlog / tarefas de início | Tarefas aguardando início |
+| **Ongoing** | Em execução | Só pode haver **uma** tarefa em Ongoing por vez |
+| **Manager Validation** | Terminou execução | Aguardando validação do manager |
+
+**"Link da branch ou GTM":** Obrigatório **apenas** ao mover de Ongoing **para** Manager Validation. Não é necessário ao mover de Task para Ongoing.
+
+---
+
+## Filtro e assignee
+
+- **Filtro:** Use "Minhas partes abertas" para listar apenas demandas onde o usuário autenticado é o responsável.
+- **Assignee:** Considere `assignee_id` (ou `responsible_id` na API) para garantir que as demandas listadas são do usuário atual. O User-Token do MCP identifica o usuário; a listagem deve filtrar por `responsible_id` equivalente ao usuário autenticado.
+
+## Como detectar tarefas em Ongoing do usuário
+
+Para verificar se já existe tarefa em Ongoing **do usuário atual (assignee)**, use:
+
+1. `runrunit_list_task_filters` — obter o `id` do filtro "Minhas partes abertas" (ou nome equivalente no ambiente).
+2. `runrunit_list_tasks` com `filter_id` = ID do filtro "Minhas partes abertas". Use `assignee_id` (ou `responsible_id`) do usuário autenticado quando disponível, para listar apenas tarefas onde ele é o responsável.
+3. Filtrar o resultado: tasks onde `board_stage_id` = ID do stage Ongoing **ou** `board_stage_name` contém "Ongoing". Se a API aceitar `board_stage_id` na query, use-o diretamente.
+
+---
+
+## Fluxo de início de demanda
+
+Quando o usuário solicitar iniciar uma task, **EXECUTE** todas as etapas na ordem abaixo. **Chame as ferramentas** — não basta planejar ou descrever. A tarefa só está iniciada quando: (1) a branch foi criada, (2) o tracking está rodando, (3) a tarefa está na coluna Ongoing, e (4) se havia outra em Ongoing, ela foi reajustada.
+
+**Se o usuário disser "passe a outra para Task" (ou similar) junto com "iniciar task":** considere isso a resposta à pergunta e execute o reajuste imediatamente — mova a Ongoing para Task, depois prossiga com Git e Runrunit.
+
+### Ordem obrigatória (não pule nenhuma)
+
+**CRÍTICO — NUNCA faça só tracking.** A ordem é SEMPRE: (1) tirar a outra de Ongoing → (2) mover a nova para Ongoing → (3) tracking.
+
+| # | Etapa | Ferramentas |
+|---|-------|-------------|
+| 0 | **1º** Reajuste (se já existe Ongoing) | `runrunit_list_task_filters` → `runrunit_list_tasks` → `runrunit_get_task` → `runrunit_list_board_stages` → `runrunit_update_task` (mover a que está em Ongoing para Task ou Manager Validation) |
+| 1 | Git | `git checkout` → `git pull` → `git checkout -b task-{id}` |
+| 2a | **2º** Mover a task solicitada para Ongoing | `runrunit_get_task` (da task com o ID solicitado) → `runrunit_list_board_stages` → `runrunit_update_task` com `board_stage_id` = Ongoing |
+| 2b | **3º** Workflow + tracking | `runrunit_create_workflow` (se necessário) → `runrunit_assignment_play` |
+
+### 0. Reajuste de cards (se já existir tarefa em Ongoing)
+
+**Primeiro**, antes de Git e antes de qualquer outra coisa: liste as tarefas em Ongoing **do usuário (assignee_id)** — use filtro "Minhas partes abertas" e/ou `assignee_id` e filtre por coluna Ongoing. **Se existir** tarefa em Ongoing:
+
+**OBRIGATÓRIO — você DEVE perguntar ao usuário (não avance sem responder):** "A tarefa [nome da tarefa] que está em Ongoing volta para Task ou vai para Manager Validation?"
+
+1. **Aguarde a resposta do usuário.** Não prossiga sem ela.
+2. Se o usuário disser **Manager Validation:** verificar se o campo "Link da branch ou GTM" está preenchido na tarefa. **Se estiver vazio:** solicitar o link ao usuário, depois **atualizar a tarefa** com `runrunit_update_task` preenchendo o campo personalizado "Link da branch ou GTM" (use o ID/nome do custom field do projeto, ex.: `custom_field_link_branch`). Só então mover.
+3. Se o usuário disser **Task:** não precisa do link.
+4. **Obter o board_stage_id do destino:** use `runrunit_get_task` na tarefa em Ongoing para obter `board_id`; depois `runrunit_list_board_stages` com esse `board_id`; localize o stage por nome ("Task" ou "Manager Validation") e use o `id`.
+5. **Mover** a tarefa com `runrunit_update_task` e `task: { board_stage_id: <id_do_destino> }` — **chame a ferramenta**, não apenas descreva.
+6. Só então fazer Git e Runrunit.
+
+### 1. Git
+
+- Identificar branch principal (`git rev-parse --abbrev-ref origin/HEAD` ou `git remote show origin`).
+- `git checkout <branch_principal>` → `git pull` → `git checkout -b task-{id}`
+
+### 2. Runrunit (obrigatório — não pare após o Git)
+
+Após criar a branch, **continue** e execute **nesta ordem exata**:
+
+1. **PRIMEIRO — Mover a tarefa para Ongoing:** use `runrunit_get_task` na tarefa que está iniciando para obter `board_id`; depois `runrunit_list_board_stages` com esse `board_id`; localize o stage "Ongoing" e use o `id`. Em seguida `runrunit_update_task` com `task: { board_stage_id: <id_ongoing> }` — **mover a tarefa para a coluna Ongoing**. (Não exige "Link da branch ou GTM" — só Manager Validation exige.)
+2. **DEPOIS — Tracking:** `runrunit_create_workflow` (se a tarefa ainda não tiver workflow) → `runrunit_assignment_play` — **iniciar o cronômetro**. Chame a ferramenta; não pare sem executar.
+
+**Erro comum (NUNCA faça isso):** Dar só `runrunit_assignment_play` e ignorar o reajuste e a movimentação. A ordem é SEMPRE: (1) tirar a outra de Ongoing → (2) mover a nova para Ongoing → (3) tracking.
+
+**Erro comum:** Criar a branch e parar sem mover para Ongoing. A tarefa iniciada deve estar **na coluna Ongoing** com o tracking **rodando**. Se a tarefa continuar na coluna Task, o fluxo está incompleto.
+
+**Erro comum:** Não perguntar ao usuário sobre a tarefa em Ongoing. Se já existe tarefa em Ongoing, a pergunta é **obrigatória** antes de prosseguir.
+
+**Para mover tarefas entre colunas:** sempre use `runrunit_list_board_stages` para obter os IDs dos stages (Task, Ongoing, Manager Validation) a partir do `board_id` da tarefa.
+
+---
+
+## Troca direta de colunas (ex.: "Passe ela para Ongoing e a outra para Task")
+
+Quando o usuário pedir **iniciar task** e **trocar** colunas na mesma mensagem — por exemplo: *"Iniciar a task X, passe ela para Ongoing e a outra que está em Ongoing para Task"* — **EXECUTE imediatamente** sem perguntar de novo:
+
+1. **Identificar as tarefas:** a que vai para Ongoing (a que o usuário quer iniciar) e a que está em Ongoing (que volta para Task).
+2. **Obter os IDs dos stages:** `runrunit_get_task` em cada tarefa para obter `board_id` → `runrunit_list_board_stages` → mapear Task e Ongoing.
+3. **PRIMEIRO — Mover a tarefa que está em Ongoing para Task:** `runrunit_update_task` com `task: { board_stage_id: <id_task> }`.
+4. **SEGUNDO — Mover a nova tarefa para Ongoing:** `runrunit_update_task` com `task: { board_stage_id: <id_ongoing> }`.
+5. **TERCEIRO — Iniciar tracking:** `runrunit_create_workflow` (se necessário) → `runrunit_assignment_play`.
+
+Não exija "Link da branch ou GTM" ao mover para Task — só é obrigatório ao mover para Manager Validation. Execute as três etapas na mesma sequência; não pare no meio. **Nunca** faça só o tracking sem as movimentações.
+
+---
+
+## Personalização
+
+Cada pessoa pode ajustar os IDs conforme seu projeto no Runrunit. Consulte `docs/Workflow-Config-Exemplo.md` para obter os valores.
+
+| Variável | Descrição |
+|----------|-----------|
+| `board_stage_id_task` | ID do stage "Task" |
+| `board_stage_id_ongoing` | ID do stage "Ongoing" |
+| `board_stage_id_manager_validation` | ID do stage "Manager Validation" |
+| `custom_field_link_branch` | ID ou nome do custom field "Link da branch ou GTM" |
+| `filter_id_minhas_partes` | ID do filtro "Minhas partes abertas" |
