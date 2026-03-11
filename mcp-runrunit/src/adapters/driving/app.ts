@@ -92,13 +92,33 @@ export const TOOLS = [
   {
     name: "runrunit_list_board_stages",
     description:
-      "List board stages (Task, Ongoing, Manager Validation, etc.). Use board_id from a task. Returns stages with id and name — use to get board_stage_id for runrunit_update_task when moving tasks.",
+      "List board stages (Task, Ongoing, Manager Validation, etc.). Use board_id from a task. Returns stages with id and name — use with runrunit_move_task_stage when moving tasks by stage name.",
     inputSchema: {
       type: "object" as const,
       properties: {
         board_id: { type: "number", description: "Board ID (from task.board_id)" },
       },
       required: ["board_id"],
+    },
+  },
+  /**
+   * @namedTools runrunit_move_task_stage
+   */
+  {
+    name: "runrunit_move_task_stage",
+    description:
+      "Moves a task to a board stage (column). Tasks must only advance; backward move is allowed only to 'Task' or 'Blocked Task' (e.g. impediment or not finished). Use board_stage_name or board_stage_id. For stages that require 'Link da branch', fill it first with runrunit_update_task.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task_id: { type: "number", description: "Task ID to move" },
+        board_stage_name: {
+          type: "string",
+          description: "Stage name (e.g. 'Task', 'Ongoing', 'Manager Validation', 'Ready for production'). Partial match, case-insensitive.",
+        },
+        board_stage_id: { type: "number", description: "Stage ID (from runrunit_list_board_stages)" },
+      },
+      required: ["task_id"],
     },
   },
   {
@@ -164,7 +184,7 @@ export const TOOLS = [
   {
     name: "runrunit_update_task",
     description:
-    "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date, board_stage_id). Use board_stage_id to move tasks between columns (Task, Ongoing, Manager Validation). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32). Always ensure that the task is in the Ongoing column (board_stage_id: 96356) before calling this tool.",
+      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32). To move a task between columns (Task, Ongoing, Manager Validation), use runrunit_move_task_stage.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -181,9 +201,6 @@ export const TOOLS = [
               description: "URL of the PR or branch (stored in custom field 'Link da branch', e.g. https://github.com/org/repo/pull/21)",
             },
           },
-          board_stage_id: { type: "number", description: "Board stage ID" },
-          board_name: { type: "string", description: "Board name" },
-          board_stage_name: { type: "string", description: "Board stage name" },
           additionalProperties: true,
         },
       },
@@ -450,6 +467,47 @@ function textContent(text: string): { type: "text"; text: string }[] {
   return [{ type: "text", text }];
 }
 
+/** Stages allowed when moving backward (return). Only these two are permitted. */
+const ALLOWED_BACKWARD_STAGE_NAMES = ["task", "blocked task"];
+
+function resolveStageByName(
+  stages: Array<{ id: number; name: string }>,
+  name: string,
+): number | null {
+  const normalized = name.trim().toLowerCase();
+  const exact = stages.find((s) => s.name.toLowerCase() === normalized);
+  if (exact) return exact.id;
+  const partial = stages.find(
+    (s) =>
+      s.name.toLowerCase().includes(normalized) ||
+      normalized.includes(s.name.toLowerCase()),
+  );
+  return partial?.id ?? null;
+}
+
+type StageWithPosition = { id: number; name: string; position: number };
+
+/**
+ * Validates move: tasks must only advance. Backward move is allowed only to
+ * "Task" or "Blocked Task" (impediment / not finished). Returns error message or null if allowed.
+ */
+function validateStageMove(
+  currentStage: StageWithPosition,
+  targetStage: StageWithPosition,
+): string | null {
+  if (currentStage.id === targetStage.id) {
+    return "Task is already in this stage. No move needed.";
+  }
+  const isForward = targetStage.position > currentStage.position;
+  if (isForward) return null;
+  const targetNameNorm = targetStage.name.trim().toLowerCase();
+  const allowed = ALLOWED_BACKWARD_STAGE_NAMES.some(
+    (n) => targetNameNorm === n || targetNameNorm.includes(n) || n.includes(targetNameNorm),
+  );
+  if (allowed) return null;
+  return `Moving backward is only allowed to 'Task' or 'Blocked Task' (e.g. impediment). Cannot move from '${currentStage.name}' back to '${targetStage.name}'. Tasks should only advance stages.`;
+}
+
 /**
  * Cria e configura a instância do MCP Server com todas as tools Runrun.it.
  * Usado tanto pelo entry stdio (index.ts) quanto pelo servidor HTTP (server.ts).
@@ -517,6 +575,96 @@ export function createMcpServer(): Server {
         case "runrunit_list_board_stages":
           result = await tasks.listBoardStages(Number(a.board_id));
           break;
+        case "runrunit_move_task_stage": {
+          const taskId = Number(a.task_id);
+          const boardStageId = a.board_stage_id as number | undefined;
+          const boardStageName = a.board_stage_name as string | undefined;
+          if (
+            (boardStageId == null || !Number.isInteger(boardStageId)) &&
+            (boardStageName == null || String(boardStageName).trim() === "")
+          ) {
+            result = {
+              error: "Provide either board_stage_id or board_stage_name to move the task.",
+              task_id: taskId,
+            };
+            break;
+          }
+          const task = (await tasks.getTask(taskId)) as {
+            board_id?: number;
+            board_stage_id?: number;
+          };
+          const boardId = task?.board_id;
+          if (boardId == null || !Number.isInteger(boardId)) {
+            result = {
+              error:
+                "Task has no board_id; cannot resolve or validate stage. Use board_stage_id from runrunit_list_board_stages.",
+              task_id: taskId,
+            };
+            break;
+          }
+          const stagesRaw = (await tasks.listBoardStages(boardId)) as Array<{
+            id?: number;
+            name?: string;
+            position?: number;
+          }>;
+          const stagesWithPosition: StageWithPosition[] = stagesRaw.map((s) => ({
+            id: Number(s.id),
+            name: String(s.name ?? ""),
+            position: Number(s.position ?? 0),
+          }));
+          const stages = stagesWithPosition.map((s) => ({ id: s.id, name: s.name }));
+          let targetStage: StageWithPosition | null = null;
+          if (boardStageId != null && Number.isInteger(boardStageId)) {
+            targetStage = stagesWithPosition.find((s) => s.id === boardStageId) ?? null;
+            if (targetStage == null) {
+              result = {
+                error: `board_stage_id ${boardStageId} not found on this board. Use runrunit_list_board_stages to see valid stages.`,
+                task_id: taskId,
+                board_id: boardId,
+              };
+              break;
+            }
+          } else if (boardStageName != null && String(boardStageName).trim() !== "") {
+            const resolvedId = resolveStageByName(stages, boardStageName);
+            if (resolvedId == null) {
+              result = {
+                error: `No board stage matching '${boardStageName}'. Available stages: ${stages.map((s) => `${s.name} (id: ${s.id})`).join(", ")}`,
+                task_id: taskId,
+                board_id: boardId,
+              };
+              break;
+            }
+            targetStage = stagesWithPosition.find((s) => s.id === resolvedId) ?? null;
+          }
+          if (targetStage == null) {
+            result = {
+              error: "Could not resolve target stage.",
+              task_id: taskId,
+            };
+            break;
+          }
+          const currentStageId = task?.board_stage_id;
+          const currentStage =
+            currentStageId != null
+              ? stagesWithPosition.find((s) => s.id === currentStageId)
+              : null;
+          if (currentStage == null) {
+            result = await tasks.moveTask(taskId, targetStage.id);
+            break;
+          }
+          const validationError = validateStageMove(currentStage, targetStage);
+          if (validationError != null) {
+            result = {
+              error: validationError,
+              task_id: taskId,
+              current_stage: currentStage.name,
+              target_stage: targetStage.name,
+            };
+            break;
+          }
+          result = await tasks.moveTask(taskId, targetStage.id);
+          break;
+        }
         case "runrunit_get_task":
           result = await tasks.getTask(Number(a.id));
           break;
@@ -543,7 +691,8 @@ export function createMcpServer(): Server {
           break;
         }
         case "runrunit_update_task": {
-          result = await tasks.updateTask(Number(a.id), { task: a.task as Record<string, unknown> });
+          const taskPayload = taskUpdateToApiPayload(a.task as Record<string, unknown>);
+          result = await tasks.updateTask(Number(a.id), { task: taskPayload });
           break;
         }
         case "runrunit_delete_task":
