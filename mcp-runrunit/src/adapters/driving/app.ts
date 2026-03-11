@@ -98,7 +98,7 @@ export const TOOLS = [
    */
   {
     name: "runrunit_list_subtasks",
-    description: "List subtasks of a task from Runrun.it.",
+    description: "Use for listing subtasks of a task from Runrun.it.",
     inputSchema: {
       type: "object" as const,
       properties: { task_id: { type: "number", description: "Parent task ID" } },
@@ -146,8 +146,8 @@ export const TOOLS = [
    */
   {
     name: "runrunit_update_task",
-  description:
-    "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date, board_stage_id). Use board_stage_id to move tasks between columns (Task, Ongoing, Manager Validation). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32)",
+    description:
+    "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date, board_stage_id). Use board_stage_id to move tasks between columns (Task, Ongoing, Manager Validation). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32). Always ensure that the task is in the Ongoing column (board_stage_id: 96356) before calling this tool.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -164,6 +164,9 @@ export const TOOLS = [
               description: "URL of the PR or branch (stored in custom field 'Link da branch', e.g. https://github.com/org/repo/pull/21)",
             },
           },
+          board_stage_id: { type: "number", description: "Board stage ID" },
+          board_name: { type: "string", description: "Board name" },
+          board_stage_name: { type: "string", description: "Board stage name" },
           additionalProperties: true,
         },
       },

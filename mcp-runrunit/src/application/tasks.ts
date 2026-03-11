@@ -115,12 +115,6 @@ export async function assignmentPlay(taskId: number, assignmentId: string) {
 }
 
 export async function listBoardStages(boardId: number) {
-  // #region agent log
-  dbg({ hypothesisId: "H4", location: "listBoardStages:entry", message: "listBoardStages called", data: { boardId } });
-  // #endregion
   const stages = await runrunitFetch<unknown[]>(`boards/${boardId}/stages`);
-  // #region agent log
-  dbg({ hypothesisId: "H4", location: "listBoardStages:result", message: "listBoardStages result", data: { boardId, stageCount: Array.isArray(stages) ? stages.length : 0, stageNames: Array.isArray(stages) ? stages.map((s: unknown) => (s as { name?: string })?.name) : [] } });
-  // #endregion
   return stages;
 }
