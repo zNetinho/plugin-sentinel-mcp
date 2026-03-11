@@ -38,6 +38,23 @@ export const TOOLS = [
    * @namedTools runrunit_list_tasks
    */
   {
+    name: "runrunit_list_projects",
+    description:
+      "List all projects from Runrun.it. Optional filters: client_id, project_group_id, is_closed, is_active, page, limit.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        client_id: { type: "number", description: "Filter by client ID" },
+        project_group_id: { type: "number", description: "Filter by project group ID" },
+        is_closed: { type: "boolean", description: "Filter by closed state" },
+        is_active: { type: "boolean", description: "Filter by active state" },
+        page: { type: "number", description: "Page number (default 1)" },
+        limit: { type: "number", description: "Items per page (1-100)" },
+      },
+      required: [],
+    },
+  },
+  {
     name: "runrunit_list_tasks",
     description:
       "List tasks from Runrun.it. Optional filters: ids, user_id, follower_id, responsible_id, assignee_id, filter_id, board_stage_id, project_id, is_closed, is_working_on, sort, sort_dir, page, limit.",
