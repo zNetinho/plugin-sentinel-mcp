@@ -22,7 +22,8 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 | Ver detalhes de **uma** tarefa | `runrunit_get_task` | Exige `id` (número). Preferir após listar quando precisar de detalhes. |
 | Ver subtarefas de uma tarefa | `runrunit_list_subtasks` | Exige `task_id` (número). |
 | **Criar** tarefa | `runrunit_create_task` | Obrigatório: `title`, `type_id`. Opcional: `project_id`, `desired_date` (ISO), `assignments`. |
-| **Alterar** tarefa (título, data, status etc.) | `runrunit_update_task` | Exige `id` e `task` (objeto com apenas os campos a atualizar). |
+| **Alterar** tarefa (título, data, link da branch etc.) | `runrunit_update_task` | Exige `id` e `task` (objeto com apenas os campos a atualizar). Para mover entre colunas do board, use `runrunit_move_task_stage`. |
+| **Mover** tarefa de etapa/coluna (Task, Ongoing, Manager Validation) | `runrunit_move_task_stage` | Exige `task_id`; use `board_stage_id` ou `board_stage_name`. **Regra:** tarefas só avançam; retorno permitido apenas para "Task" ou "Blocked Task" (impedimento/não finalizado). Para etapas que exigem "Link da branch", preencher antes com `runrunit_update_task` (link_da_branch). |
 | **Excluir** tarefa | `runrunit_delete_task` | Exige `id`. Operação irreversível; confirmar com o usuário se fizer sentido. |
 
 ### Comments
@@ -72,7 +73,8 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
      3. **Chamar a skill [create-pr-github](skills/create-pr-github/SKILL.md) para abrir a PR e obter a URL da PR — passo obrigatório; o link é necessário para os passos 5 e 6. Nunca pule este passo.**  
      4. Com as URLs das evidências (antes/depois) e **a URL da PR**, montar um resumo do que foi feito (ex.: histórico do que foi alterado, alinhado aos comentários do GitHub).  
      5. Criar o comentário na task com `runrunit_create_comment`: texto do resumo + **Link da PR: \<url_da_pr>** + evidências em texto simples (Runrun.it não aceita Markdown), ex.: `Antes: <secure_url>` e `Depois: <secure_url>`.  
-     6. Atualizar a task com o link da PR: `runrunit_update_task(id, { task: { link_da_branch: "<url_da_pr>" } })`. O campo `link_da_branch` é mapeado internamente para o custom field "Link da branch" (ex.: `custom_32`). **Sempre** preencher com a URL obtida no passo 3.
+     6. Atualizar a task com o link da PR: `runrunit_update_task(id, { task: { link_da_branch: "<url_da_pr>" } })`. O campo `link_da_branch` é mapeado internamente para o custom field "Link da branch" (ex.: `custom_32`). **Sempre** preencher com a URL obtida no passo 3.  
+     7. Se for mover a task para outra etapa (ex.: Manager Validation), usar **depois** do passo 6: `runrunit_move_task_stage(task_id, { board_stage_name: "Manager Validation" })`. Etapas que exigem "Link da branch" só aceitam a mudança após o link estar preenchido.
 
 4. **Evitar muitas chamadas**
    - Preferir `runrunit_list_tasks` com `limit` e filtros em vez de várias `runrunit_get_task` em sequência quando só precisar de resumo.

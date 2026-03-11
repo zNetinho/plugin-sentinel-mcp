@@ -229,11 +229,12 @@ Ao atualizar a versão, altere `version` em `package.json` e em `server.json` (e
 |------------|-----------|
 | `runrunit_list_tasks` | Lista tarefas com filtros opcionais (ids, responsible_id, assignee_id, filter_id, board_stage_id, project_id, etc.) |
 | `runrunit_list_task_filters` | Lista filtros de tarefas (para obter filter_id de "Minhas partes abertas") |
-| `runrunit_list_board_stages` | Lista stages do board (Task, Ongoing, Manager Validation) — use para obter board_stage_id ao mover tarefas |
+| `runrunit_list_board_stages` | Lista stages do board (Task, Ongoing, Manager Validation) — use com runrunit_move_task_stage ao mover por nome |
+| `runrunit_move_task_stage` | Move uma tarefa para uma etapa/coluna do board (task_id + board_stage_id ou board_stage_name). Para etapas que exigem "Link da branch", preencher antes com runrunit_update_task |
 | `runrunit_get_task` | Retorna uma tarefa pelo ID |
 | `runrunit_list_subtasks` | Lista subtarefas de uma tarefa |
 | `runrunit_create_task` | Cria tarefa (obrigatório: title, type_id; opcional: project_id, assignments, desired_date, etc.) |
-| `runrunit_update_task` | Atualiza tarefa (id + objeto com campos a atualizar, ex.: board_stage_id) |
+| `runrunit_update_task` | Atualiza tarefa (id + objeto com campos a atualizar, ex.: title, desired_date, link_da_branch). Para mover entre colunas use runrunit_move_task_stage |
 | `runrunit_delete_task` | Remove uma tarefa |
 | `runrunit_create_workflow` | Cria workflow para uma tarefa (permite iniciar tracking) |
 | `runrunit_assignment_play` | Inicia tracking (play) em um assignment de tarefa |
