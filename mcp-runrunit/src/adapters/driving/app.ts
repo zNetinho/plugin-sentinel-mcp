@@ -1,21 +1,22 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import * as tasks from "../../application/tasks.js";
+import { uploadImage as uploadImageCloudinary } from "../../application/cloudinary.js";
 import * as comments from "../../application/comments.js";
-import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
-import * as projects from "../../application/projects.js";
-import * as devSuggestions from "../../application/dev_suggestions.js";
 import { detectPlatformFromTask } from "../../application/detect_platform.js";
+import * as devSuggestions from "../../application/dev_suggestions.js";
+import * as projects from "../../application/projects.js";
+import * as tasks from "../../application/tasks.js";
+import { taskUpdateToApiPayload } from "../../infrastructure/mappers/custom_fields_mapper.js";
 import { RunrunitAPIError } from "../driven/api.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import path from "path";
 
 export const TOOLS = [
+  /**
+   * @namedTools runrunit_list_projects
+   */
   {
     name: "runrunit_list_projects",
     description:
@@ -33,16 +34,23 @@ export const TOOLS = [
       required: [],
     },
   },
+  /**
+   * @namedTools runrunit_list_tasks
+   */
   {
     name: "runrunit_list_tasks",
     description:
-      "List tasks from Runrun.it. Optional filters: ids, user_id, follower_id, project_id, is_closed, is_working_on, sort, sort_dir, page, limit.",
+      "List tasks from Runrun.it. Optional filters: ids, user_id, follower_id, responsible_id, assignee_id, filter_id, board_stage_id, project_id, is_closed, is_working_on, sort, sort_dir, page, limit.",
     inputSchema: {
       type: "object" as const,
       properties: {
         ids: { type: "string", description: "Comma-separated task IDs" },
         user_id: { type: "string", description: "Creator user ID" },
         follower_id: { type: "string", description: "Follower user ID" },
+        responsible_id: { type: "string", description: "Responsible/assignee user ID (e.g. for 'Minhas partes abertas')" },
+        assignee_id: { type: "string", description: "Assignee/executor principal user ID" },
+        filter_id: { type: "number", description: "ID of a task filter (e.g. 'Minhas partes abertas')" },
+        board_stage_id: { type: "number", description: "Filter by board stage (e.g. Ongoing)" },
         project_id: { type: "number", description: "Project ID" },
         is_closed: { type: "boolean", description: "Filter by delivered tasks" },
         is_working_on: { type: "boolean", description: "Filter by in progress" },
@@ -55,6 +63,28 @@ export const TOOLS = [
     },
   },
   {
+    name: "runrunit_list_task_filters",
+    description:
+      "List all task filters available to the current user. Use to find filter_id for 'Minhas partes abertas' or other filters.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "runrunit_list_board_stages",
+    description:
+      "List board stages (Task, Ongoing, Manager Validation, etc.). Use board_id from a task. Returns stages with id and name — use to get board_stage_id for runrunit_update_task when moving tasks.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        board_id: { type: "number", description: "Board ID (from task.board_id)" },
+      },
+      required: ["board_id"],
+    },
+  },
+  {
     name: "runrunit_get_task",
     description: "Get a single task by ID from Runrun.it.",
     inputSchema: {
@@ -63,25 +93,34 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_list_subtasks
+   */
   {
     name: "runrunit_list_subtasks",
-    description: "List subtasks of a task from Runrun.it.",
+    description: "Use for listing subtasks of a task from Runrun.it.",
     inputSchema: {
       type: "object" as const,
       properties: { task_id: { type: "number", description: "Parent task ID" } },
       required: ["task_id"],
     },
   },
+  /**
+   * @namedTools runrunit_create_task
+   */
   {
     name: "runrunit_create_task",
     description:
-      "Create a task on Runrun.it. Requires title and type_id. Optional: project_id, assignments, desired_date, etc.",
+      "Create a task on Runrun.it in board Ongoing (ID: 96356) in column Task by default. Requires title and type_id. Optional: project_id, assignments, desired_date, etc.",
     inputSchema: {
       type: "object" as const,
       properties: {
         title: { type: "string", description: "Task title" },
         type_id: { type: "number", description: "Task type ID" },
         project_id: { type: "number", description: "Project ID" },
+        project_name: { type: "string", description: "Project name" },
+        board_name: { type: "string", description: "Board name" },
+        board_stage_name: { type: "string", description: "Board stage name" },
         on_going: { type: "boolean", description: "Ongoing task" },
         desired_date: { type: "string", description: "Desired delivery date (ISO)" },
         desired_start_date: { type: "string", description: "Desired start date (ISO)" },
@@ -102,10 +141,13 @@ export const TOOLS = [
       required: ["title", "type_id"],
     },
   },
+  /**
+   * @namedTools runrunit_update_task
+   */
   {
     name: "runrunit_update_task",
     description:
-      "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32).",
+    "Update a task on Runrun.it. Pass task ID and an object with fields to update (e.g. title, desired_date, board_stage_id). Use board_stage_id to move tasks between columns (Task, Ongoing, Manager Validation). For the PR/branch link use link_da_branch (URL); it is stored in the custom field 'Link da branch' (custom_32). Always ensure that the task is in the Ongoing column (board_stage_id: 96356) before calling this tool.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -122,12 +164,18 @@ export const TOOLS = [
               description: "URL of the PR or branch (stored in custom field 'Link da branch', e.g. https://github.com/org/repo/pull/21)",
             },
           },
+          board_stage_id: { type: "number", description: "Board stage ID" },
+          board_name: { type: "string", description: "Board name" },
+          board_stage_name: { type: "string", description: "Board stage name" },
           additionalProperties: true,
         },
       },
       required: ["id", "task"],
     },
   },
+  /**
+   * @namedTools runrunit_delete_task
+   */
   {
     name: "runrunit_delete_task",
     description: "Delete a task on Runrun.it.",
@@ -135,6 +183,33 @@ export const TOOLS = [
       type: "object" as const,
       properties: { id: { type: "number", description: "Task ID" } },
       required: ["id"],
+    },
+  },
+  /**
+   * @namedTools runrunit_create_workflow
+   */
+  {
+    name: "runrunit_create_workflow",
+    description: "Create a workflow for a task (starts tracking eligibility). Task must not be closed, ongoing, or already have a workflow.",
+    inputSchema: {
+      type: "object" as const,
+      properties: { task_id: { type: "number", description: "Task ID" } },
+      required: ["task_id"],
+    },
+  },
+  /**
+   * @namedTools runrunit_assignment_play
+   */
+  {
+    name: "runrunit_assignment_play",
+    description: "Start tracking work on a task (play). Pauses current task if assignee is already working on another. Always ensure that the task is in the Ongoing column (board_stage_id: 96356) before calling this tool.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task_id: { type: "number", description: "Task ID" },
+        assignment_id: { type: "string", description: "Assignment ID (from task.assignments[].id)" },
+      },
+      required: ["task_id", "assignment_id"],
     },
   },
   {
@@ -146,6 +221,9 @@ export const TOOLS = [
       required: ["task_id"],
     },
   },
+  /**
+   * @namedTools runrunit_get_comment
+   */
   {
     name: "runrunit_get_comment",
     description: "Get a single comment by ID from Runrun.it.",
@@ -155,10 +233,13 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_create_comment
+   */
   {
     name: "runrunit_create_comment",
     description:
-      "Create a comment on a task in Runrun.it. Runrun.it does not support Markdown in comments; use plain text and raw URLs only. Optional: url_antes and url_depois. When both are provided, the agent should obtain visual evidence (e.g. use skill registrar-evidencias: capture screenshots, upload to Cloudinary), then append to the comment text plain labels and URLs (e.g. 'Antes: https://...' and 'Depois: https://...'), and call this tool with the enriched text.",
+      "Create a comment on a task in Runrun.it. Format: plain text and raw URLs only (no Markdown). Optional url_antes + url_depois: when both are provided, (1) capture visual evidence (skill registrar-evidencias), (2) upload images (e.g. Cloudinary), (3) append to text plain labels and image URLs (e.g. 'Antes: <url>' and 'Depois: <url>'), (4) call this tool with the enriched text.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -170,6 +251,9 @@ export const TOOLS = [
       required: ["task_id", "text"],
     },
   },
+  /**
+   * @namedTools runrunit_update_comment
+   */
   {
     name: "runrunit_update_comment",
     description: "Update a comment's text on Runrun.it.",
@@ -182,6 +266,9 @@ export const TOOLS = [
       required: ["id", "text"],
     },
   },
+  /**
+   * @namedTools runrunit_delete_comment
+   */
   {
     name: "runrunit_delete_comment",
     description: "Delete a comment on Runrun.it.",
@@ -191,6 +278,9 @@ export const TOOLS = [
       required: ["id"],
     },
   },
+  /**
+   * @namedTools runrunit_comment_reaction
+   */
   {
     name: "runrunit_comment_reaction",
     description: "Add a reaction (emoji) to a comment on Runrun.it.",
@@ -203,10 +293,13 @@ export const TOOLS = [
       required: ["comment_id", "emoji"],
     },
   },
+  /**
+   * @namedTools runrunit_create_external_comment
+   */
   {
     name: "runrunit_create_external_comment",
     description:
-      "Create a comment in the external/guest channel on a task in Runrun.it. Use this for comments shared with external clients (channel_name: guest).",
+      "For create a comment in the external/guest channel on a task in Runrun.it, use only text simple, without Markdown. Use this for comments shared with external clients (channel_name: guest).",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -216,6 +309,9 @@ export const TOOLS = [
       required: ["task_id", "text"],
     },
   },
+  /**
+   * @namedTools runrunit_suggest_devs_with_free_queue
+   */
   {
     name: "runrunit_suggest_devs_with_free_queue",
     description:
@@ -291,10 +387,13 @@ export const TOOLS = [
       required: [],
     },
   },
+  /**
+   * @namedTools runrunit_project_detect_platform
+   */
   {
     name: "runrunit_project_detect_platform",
     description:
-      "Identifica a plataforma do projeto a partir das tags da task no Runrun.it (Node, Python, Ruby, Go, Rust, etc.) e sugere o comando para subir o ambiente de desenvolvimento. A plataforma é definida pelas tags da task (tags_data/tag_list), não pelos arquivos do repositório.",
+      "Identifies the project platform based on task tags in Runrun.it (Node, Python, Ruby, Go, Rust, etc.) and suggests the command to upload the development environment. The platform is defined by task tags (tags_data/tag_list), not by repository files.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -304,6 +403,28 @@ export const TOOLS = [
         },
       },
       required: ["task_id"],
+    },
+  },
+  /**
+   * @namedTools runrunit_upload_image_cloudinary
+   */
+  {
+    name: "runrunit_upload_image_cloudinary",
+    description:
+      "Faz upload de uma imagem para a Cloudinary e retorna a URL pública (secure_url). Usa as variáveis CLOUDINARY_* já configuradas no MCP (ex.: em mcp.json). Use para screenshots, evidências, PRs e comentários.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Caminho absoluto ou relativo do arquivo de imagem no disco (ex.: path retornado por browser_take_screenshot).",
+        },
+        public_id: {
+          type: "string",
+          description: "ID público opcional na Cloudinary (ex.: pr-evidencia-desktop, docs-screenshot-1).",
+        },
+      },
+      required: ["file_path"],
     },
   },
 ];
@@ -358,6 +479,10 @@ export function createMcpServer(): Server {
             ids: a.ids as string | undefined,
             user_id: a.user_id as string | undefined,
             follower_id: a.follower_id as string | undefined,
+            responsible_id: a.responsible_id as string | undefined,
+            assignee_id: a.assignee_id as string | undefined,
+            filter_id: a.filter_id as number | string | undefined,
+            board_stage_id: a.board_stage_id as number | undefined,
             project_id: a.project_id as number | undefined,
             is_closed: a.is_closed as boolean | undefined,
             is_working_on: a.is_working_on as boolean | undefined,
@@ -369,6 +494,12 @@ export function createMcpServer(): Server {
           result = await tasks.listTasks(params);
           break;
         }
+        case "runrunit_list_task_filters":
+          result = await tasks.listTaskFilters();
+          break;
+        case "runrunit_list_board_stages":
+          result = await tasks.listBoardStages(Number(a.board_id));
+          break;
         case "runrunit_get_task":
           result = await tasks.getTask(Number(a.id));
           break;
@@ -380,7 +511,11 @@ export function createMcpServer(): Server {
             task: {
               title: String(a.title),
               type_id: Number(a.type_id),
+              board_stage_id: Number(a.board_stage_id),
+              board_name: String(a.board_name),
+              board_stage_name: String(a.board_stage_name),
               project_id: a.project_id != null ? Number(a.project_id) : undefined,
+              project_name: String(a.project_name),
               on_going: a.on_going as boolean | undefined,
               desired_date: a.desired_date != null ? String(a.desired_date) : undefined,
               desired_start_date: a.desired_start_date != null ? String(a.desired_start_date) : undefined,
@@ -391,13 +526,18 @@ export function createMcpServer(): Server {
           break;
         }
         case "runrunit_update_task": {
-          const taskPayload = taskUpdateToApiPayload(a.task as Record<string, unknown>);
-          result = await tasks.updateTask(Number(a.id), { task: taskPayload });
+          result = await tasks.updateTask(Number(a.id), { task: a.task as Record<string, unknown> });
           break;
         }
         case "runrunit_delete_task":
           await tasks.deleteTask(Number(a.id));
           result = { deleted: true, id: a.id };
+          break;
+        case "runrunit_create_workflow":
+          result = await tasks.createWorkflow(Number(a.task_id));
+          break;
+        case "runrunit_assignment_play":
+          result = await tasks.assignmentPlay(Number(a.task_id), String(a.assignment_id));
           break;
         case "runrunit_list_task_comments":
           result = await comments.listTaskComments(Number(a.task_id));
@@ -481,6 +621,13 @@ export function createMcpServer(): Server {
               task_id: taskId,
             };
           }
+          break;
+        }
+        case "runrunit_upload_image_cloudinary": {
+          result = await uploadImageCloudinary(
+            String(a.file_path),
+            a.public_id != null ? String(a.public_id) : undefined
+          );
           break;
         }
         default:
