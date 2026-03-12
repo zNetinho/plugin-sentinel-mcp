@@ -17,3 +17,8 @@
 ## mcp-runrunit architecture
 - DTOs, types, and API contracts belong in src/domain; application and adapters consume from domain.
 - Keep this separation consistent across all modules (tasks, comments, projects, etc.).
+
+## Discord (MCP)
+- In category Tasks, only create a new channel if the project does not already have one; search by project name first.
+- Bot token can be set via BOT_RUNRUNIT_REPORT or BOT_RUNRUNIT_REPORT_PRIVATE_KEY.
+- To list Discord channels, set DISCORD_GUILD_ID (server ID); list_channels requires guild, not only channel.
