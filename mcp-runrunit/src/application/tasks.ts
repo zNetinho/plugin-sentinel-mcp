@@ -81,7 +81,7 @@ export async function updateTask(id: number, body: UpdateTaskBody) {
       method: "PUT",
       body: JSON.stringify(body),
     });
-   
+
     return result;
   } catch (err) {
     throw err;
