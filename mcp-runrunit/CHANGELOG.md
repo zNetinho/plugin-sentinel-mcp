@@ -4,6 +4,17 @@ All notable changes to the mcp-runrunit package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.1] - 2026-03-11
+
+### Fixed
+- Remove unnecessary whitespace in `updateTask` (tasks application layer).
+- package.json: normalize `repository.url` to `git+https://...` and bin path for npm publish.
+
+### Changed
+- Release workflow: add NPM_TOKEN check and `npm pkg fix` before publish; document secret requirement.
+- Release workflow: trigger on changes to `.github/workflows/release-mcp-runrunit.yml` in addition to `mcp-runrunit/**`.
+- Deploy skill: document that publish runs on merge to main (version/changelog only).
+
 ## [1.1.0] - 2025-03-10
 
 ### Added
