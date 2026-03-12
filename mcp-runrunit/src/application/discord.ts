@@ -54,7 +54,7 @@ export async function getDefaultGuildId(): Promise<string> {
 
 /**
  * Get or create a text channel for a client (1 channel per client).
- * Channel name is derived from clientId/clientName (e.g. client-123 or slug of name).
+ * Channel name is derived from clientId/clientName (e.g. slug of name like 'livemode', 'canetas-crown', 'resonant').
  * If a channel with that name already exists in the guild, returns it; otherwise creates it.
  */
 export async function getOrCreateChannelForClient(params: {
@@ -100,15 +100,21 @@ function resolveChannelNameForClient(
   clientId?: number | string,
   clientName?: string
 ): string {
-  if (clientId != null && String(clientId).trim() !== "") {
-    return `client-${String(clientId).trim()}`;
-  }
   if (clientName?.trim()) {
     return clientName
       .trim()
       .replace(/[^a-z0-9-_]/gi, "-")
       .replace(/-+/g, "-")
-      .slice(0, 100) || "client-channel";
+      .slice(0, 100);
   }
-  return "client-channel";
+  if (clientId != null && String(clientId).trim() !== "") {
+    return String(clientId)
+      .trim()
+      .replace(/[^a-z0-9-_]/gi, "-")
+      .replace(/-+/g, "-")
+      .slice(0, 100);
+  }
+  throw new Error(
+    "Missing clientName or clientId to resolve Discord channel name. Provide a project/client name (e.g. 'livemode', 'canetas-crown', 'resonant')."
+  );
 }
