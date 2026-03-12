@@ -5,6 +5,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { uploadImage as uploadImageCloudinary } from "../../application/cloudinary.js";
 import * as comments from "../../application/comments.js";
+import * as discord from "../../application/discord.js";
 import { detectPlatformFromTask } from "../../application/detect_platform.js";
 import * as devSuggestions from "../../application/dev_suggestions.js";
 import * as projects from "../../application/projects.js";
@@ -461,6 +462,74 @@ export const TOOLS = [
       required: ["file_path"],
     },
   },
+  /**
+   * @namedTools runrunit_discord_send_message
+   */
+  {
+    name: "runrunit_discord_send_message",
+    description:
+      "Send a message to a Discord channel. Use for execution history or notifications. Requires BOT_RUNRUNIT_REPORT and channel_id.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel_id: { type: "string", description: "Discord channel ID" },
+        content: { type: "string", description: "Message text (max 2000 characters)" },
+        task_id: { type: "number", description: "Optional Runrun.it task ID for context" },
+        project_id: { type: "number", description: "Optional project ID for context" },
+      },
+      required: ["channel_id", "content"],
+    },
+  },
+  /**
+   * @namedTools runrunit_discord_create_channel
+   */
+  {
+    name: "runrunit_discord_create_channel",
+    description:
+      "Create a text channel in the Discord server (guild). Use guild_id from env (DISCORD_GUILD_ID) or pass explicitly. One channel per client pattern.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Channel name (slug, e.g. client-123 or client-name)" },
+        guild_id: { type: "string", description: "Discord guild (server) ID (optional if DISCORD_GUILD_ID set)" },
+        parent_id: { type: "string", description: "Category channel ID (optional)" },
+        topic: { type: "string", description: "Channel topic (optional)" },
+      },
+      required: ["name"],
+    },
+  },
+  /**
+   * @namedTools runrunit_discord_list_channels
+   */
+  {
+    name: "runrunit_discord_list_channels",
+    description:
+      "List channels in the Discord server. Uses DISCORD_GUILD_ID or resolves from DISCORD_CHANNEL_ID.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        guild_id: { type: "string", description: "Discord guild ID (optional if env set)" },
+      },
+      required: [],
+    },
+  },
+  /**
+   * @namedTools runrunit_discord_get_or_create_channel_for_client
+   */
+  {
+    name: "runrunit_discord_get_or_create_channel_for_client",
+    description:
+      "Get or create a Discord text channel for a Runrun.it client (1 channel per client). Returns channel_id and channel_name. Use before runrunit_discord_send_message to ensure the channel exists.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        client_id: { type: "string", description: "Runrun.it client ID (or number as string)" },
+        client_name: { type: "string", description: "Client name (used for channel name if client_id not provided)" },
+        guild_id: { type: "string", description: "Discord guild ID (optional)" },
+      },
+      required: [],
+    },
+  },
 ];
 
 function textContent(text: string): { type: "text"; text: string }[] {
@@ -794,6 +863,44 @@ export function createMcpServer(): Server {
             String(a.file_path),
             a.public_id != null ? String(a.public_id) : undefined
           );
+          break;
+        }
+        case "runrunit_discord_send_message": {
+          result = await discord.sendMessage(
+            String(a.channel_id),
+            String(a.content),
+            {
+              taskId: a.task_id != null ? Number(a.task_id) : undefined,
+              projectId: a.project_id != null ? Number(a.project_id) : undefined,
+            }
+          );
+          break;
+        }
+        case "runrunit_discord_create_channel": {
+          const guildId =
+            (a.guild_id as string | undefined)?.trim() ||
+            (await discord.getDefaultGuildId());
+          result = await discord.createChannel({
+            name: String(a.name),
+            guildId,
+            parentId: (a.parent_id as string | undefined)?.trim() || undefined,
+            topic: (a.topic as string | undefined)?.trim() || undefined,
+          });
+          break;
+        }
+        case "runrunit_discord_list_channels": {
+          const guildId =
+            (a.guild_id as string | undefined)?.trim() ||
+            (await discord.getDefaultGuildId());
+          result = await discord.listChannels(guildId);
+          break;
+        }
+        case "runrunit_discord_get_or_create_channel_for_client": {
+          result = await discord.getOrCreateChannelForClient({
+            clientId: (a.client_id as string | undefined)?.trim() || undefined,
+            clientName: (a.client_name as string | undefined)?.trim() || undefined,
+            guildId: (a.guild_id as string | undefined)?.trim() || undefined,
+          });
           break;
         }
         default:

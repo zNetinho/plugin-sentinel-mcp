@@ -44,6 +44,19 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 |---------------------|------------------|------------|
 | Encontrar dev com fila mais livre / sugerir quem pode pegar tarefa | `runrunit_suggest_devs_with_free_queue` (Sentinel) | **Obrigatório** informar `board_id` e/ou `task_stage_ids` para identificar a coluna "Task" do Kanban. Usar `board_id: 96356` (Ongoing) se não houver outro definido. Por padrão inclui **todos** os devs elegíveis (incl. quem tem **zero** tarefas na coluna Task, que aparecem primeiro); o critério "menos tarefas" só ordena entre quem tem tarefas. Por padrão considera **somente desenvolvedores** (`only_developers: true`), excluindo Gestor, Social, Inovação e outras áreas não-dev. Opcionais: `team_id`, `tribe_id`, `squad_id`, `project_id`, `project_tag`, `limit` (1–10), `include_zero_tasks` (padrão true), `only_developers` (padrão true), `only_active_devs`. |
 
+### Discord (histórico por projeto / 1 canal por cliente)
+
+| Intenção do usuário | Tool recomendada | Observação |
+|---------------------|------------------|------------|
+| Enviar mensagem em um canal Discord | `runrunit_discord_send_message` | Exige `channel_id` e `content`. Opcional: `task_id`, `project_id` para contexto. Requer `BOT_RUNRUNIT_REPORT` no env. |
+| Criar canal de texto no servidor Discord | `runrunit_discord_create_channel` | Exige `name`. Opcional: `guild_id` (ou use `DISCORD_GUILD_ID`), `parent_id` (categoria), `topic`. |
+| Listar canais do servidor Discord | `runrunit_discord_list_channels` | Opcional: `guild_id` (senão usa `DISCORD_GUILD_ID` ou resolve por `DISCORD_CHANNEL_ID`). |
+| Garantir canal por cliente (1 canal por cliente) | `runrunit_discord_get_or_create_channel_for_client` | Passar `client_id` e/ou `client_name` (Runrun.it). Retorna `channel_id` e `channel_name`; cria o canal se não existir. Usar antes de `runrunit_discord_send_message` para enviar no canal do cliente. |
+
+**Regra – Categoria Tasks:** Na categoria **Tasks** do Discord, **só criar um novo canal se o projeto ainda não existir**. Sempre fazer a **busca por nome do projeto** (ex.: via `runrunit_discord_list_channels`, filtrar canais na categoria Tasks pelo nome do projeto). Se já existir canal com o nome do projeto, usar esse canal; caso contrário, criar o novo canal na categoria Tasks.
+
+Variáveis de ambiente para Discord: `BOT_RUNRUNIT_REPORT` (token do bot), `DISCORD_CHANNEL_ID` (canal padrão), `DISCORD_GUILD_ID` (ID do servidor para listar/criar canais). Ver `.env.example`.
+
 ---
 
 ## 3. Parâmetros: tipos e formatos
@@ -91,6 +104,8 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 | Resposta vazia ou inesperada | Filtros muito restritivos ou recurso não encontrado. | Ajustar filtros em `list_tasks` ou confirmar com `get_task`/`get_comment` se o recurso existe. |
 | Rate limit (429) | Muitas requisições em pouco tempo. | Reduzir chamadas; agrupar lógica; não fazer loops grandes sem necessidade. |
 | TASK_STAGE_NOT_RESOLVED (Sentinel) | Coluna "Task" não identificada na sugestão de devs. | Informar `board_id` (ex.: `96356` para Ongoing) e/ou `task_stage_ids` ao chamar `runrunit_suggest_devs_with_free_queue`. |
+| "Missing BOT_RUNRUNIT_REPORT" / "Missing DISCORD_GUILD_ID or DISCORD_CHANNEL_ID" | Credenciais Discord não configuradas. | Configurar no env do MCP: `BOT_RUNRUNIT_REPORT` (token do bot) e `DISCORD_GUILD_ID` ou `DISCORD_CHANNEL_ID` para o servidor alvo. |
+| Discord rate limit (429) | Muitas requisições à API Discord. | Reduzir chamadas; aguardar o tempo indicado na mensagem de erro. |
 
 ---
 

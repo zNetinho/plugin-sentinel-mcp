@@ -155,6 +155,13 @@ async function main() {
     res.json({ status: "ok", mcp: "runrunit" });
   });
 
+  // endpoint para chamar a tool runrunit_suggest_devs_with_free_queue
+  // app.post("/suggest-devs-with-free-queue", async (req: Request, res: Response) => {
+  //   const { board_id, board_stage_id } = req.body;
+  //   const devs = await runrunitSuggestDevsWithFreeQueue(board_id, board_stage_id);
+  //   res.json(devs);
+  // });
+
   app.listen(PORT, () => {
     console.error(`mcp-runrunit: HTTP server at http://127.0.0.1:${PORT}${MCP_PATH}`);
     console.error(`  Health: http://127.0.0.1:${PORT}/health`);
