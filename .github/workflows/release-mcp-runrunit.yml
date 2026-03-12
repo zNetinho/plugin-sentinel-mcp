@@ -30,6 +30,10 @@ jobs:
         id: version
         run: echo "VERSION=$(jq -r .version mcp-runrunit/package.json)" >> $GITHUB_OUTPUT
 
+      - name: Install dependencies
+        run: npm install
+        working-directory: mcp-runrunit
+
       - name: Build
         run: npm run build
         working-directory: mcp-runrunit
