@@ -4,6 +4,12 @@ All notable changes to the mcp-runrunit package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-03-12
+
+### Added
+- Discord application helpers to resolve default guild and get or create a per-client text channel.
+- Task application helpers for creating tasks, listing subtasks, starting assignments, listing board stages, and moving tasks between stages.
+
 ## [1.1.2] - 2026-03-12
 
 ### Fixed
