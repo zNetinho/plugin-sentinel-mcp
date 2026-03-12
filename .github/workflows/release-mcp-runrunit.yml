@@ -1,0 +1,48 @@
+# Release mcp-runrunit: tag + npm publish on push to main
+# Version must be already bumped (package.json, server.json, CHANGELOG) before merging to main.
+
+name: Release mcp-runrunit to npm
+
+on:
+  push:
+    branches: [main]
+    paths: ['mcp-runrunit/**']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Read version
+        id: version
+        run: echo "VERSION=$(jq -r .version mcp-runrunit/package.json)" >> $GITHUB_OUTPUT
+
+      - name: Build
+        run: npm run build
+        working-directory: mcp-runrunit
+
+      - name: Publish to npm
+        run: npm publish
+        working-directory: mcp-runrunit
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.version.outputs.VERSION }}"
+          git push origin "v${{ steps.version.outputs.VERSION }}"
