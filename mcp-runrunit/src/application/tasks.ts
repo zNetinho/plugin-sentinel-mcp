@@ -76,22 +76,14 @@ export type UpdateTaskBody = {
 };
 
 export async function updateTask(id: number, body: UpdateTaskBody) {
-  // #region agent log
-  dbg({ hypothesisId: "H2", location: "updateTask:entry", message: "updateTask called", data: { id, body, taskKeys: body?.task ? Object.keys(body.task) : [] } });
-  // #endregion
   try {
     const result = await runrunitFetch<unknown>(`tasks/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
     });
-    // #region agent log
-    dbg({ hypothesisId: "H3", location: "updateTask:success", message: "updateTask API success", data: { id, boardStageId: (body?.task as Record<string, unknown>)?.board_stage_id } });
-    // #endregion
+   
     return result;
   } catch (err) {
-    // #region agent log
-    dbg({ hypothesisId: "H3", location: "updateTask:error", message: "updateTask API error", data: { id, error: String(err), status: (err as { status?: number })?.status, body: (err as { body?: unknown })?.body } });
-    // #endregion
     throw err;
   }
 }
@@ -117,4 +109,11 @@ export async function assignmentPlay(taskId: number, assignmentId: string) {
 export async function listBoardStages(boardId: number) {
   const stages = await runrunitFetch<unknown[]>(`boards/${boardId}/stages`);
   return stages;
+}
+
+export async function moveTask(id: number, boardStageId: number) {
+  return runrunitFetch<unknown>(`tasks/${id}/move`, {
+    method: "POST",
+    body: JSON.stringify({ board_stage_id: boardStageId }),
+  });
 }

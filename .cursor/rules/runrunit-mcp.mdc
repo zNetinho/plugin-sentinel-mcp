@@ -14,6 +14,7 @@ Ao usar o servidor MCP **runrunit** (Runrun.it):
    - Ver um recurso → `runrunit_get_task` / `runrunit_get_comment` (exige `id` numérico).
    - Criar → `runrunit_create_task` (obrigatório: `title`, `type_id`) ou `runrunit_create_comment` (`task_id`, `text`). Comentário na sessão externa (compartilhada com clientes) → `runrunit_create_external_comment` (`task_id`, `text`).
    - Alterar → `runrunit_update_task` (`id` + `task` com **apenas os campos a alterar**). Para gravar o link da PR use `task: { link_da_branch: "<url_da_pr>" }` (mapeado para o custom field "Link da branch").
+   - Mover task entre colunas → `runrunit_move_task_stage` (`task_id` + `board_stage_id` ou `board_stage_name`). **Tarefas só avançam;** retorno permitido apenas para "Task" ou "Blocked Task" (impedimento). Para etapas que exigem Link da branch, preencher `link_da_branch` antes de mover.
    - Excluir → `runrunit_delete_task` / `runrunit_delete_comment` (exige `id`).
 
 2. **Tipos e formatos**
@@ -25,7 +26,7 @@ Ao usar o servidor MCP **runrunit** (Runrun.it):
    - Evitar muitas chamadas seguidas (rate limit ~100 req/min). Usar filtros e paginação em listagens.
    - Em update de task, enviar só o que muda em `task` (ex.: `{ title: "Novo título" }` ou `{ link_da_branch: "https://github.com/.../pull/21" }`).
    - Se faltar ID, listar com filtros e depois usar `get_task`/`get_comment` se precisar de detalhes.
-   - **Fluxo comentar com evidências e link da PR:** (1) skill registrar-evidencias → (2) skill upload-image-cloudinary → **(3) skill create-pr-github (obrigatório: sempre executar e obter a URL da PR)** → (4) resumo + evidências + **link da PR** no comentário → `runrunit_create_comment` → (5) `runrunit_update_task` com `link_da_branch`. O link da PR é essencial; sem ele não comentar/atualizar a task.
+   - **Fluxo comentar com evidências e link da PR:** (1) skill registrar-evidencias → (2) skill upload-image-cloudinary → **(3) skill create-pr-github (obrigatório: sempre executar e obter a URL da PR)** → (4) resumo + evidências + **link da PR** no comentário → `runrunit_create_comment` → (5) `runrunit_update_task` com `link_da_branch` → (6) se precisar mover etapa: `runrunit_move_task_stage` (preencher link_da_branch antes de mover para Manager Validation etc.). O link da PR é essencial; sem ele não comentar/atualizar a task.
 
 4. **Contexto completo**
    - Regras detalhadas, fluxos e glossário: `mcp-runrunit/docs/CONTEXTO-AGENTE.md`.
