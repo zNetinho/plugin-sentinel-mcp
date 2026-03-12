@@ -5,7 +5,7 @@ description: Deploy new releases of the mcp-runrunit npm package. Use when publi
 
 # Deploy mcp-runrunit Release
 
-Guides version bump, file updates, changelog, and publish for the **mcp-runrunit** npm package.
+Guides **version bump and changelog** for the **mcp-runrunit** npm package. Build and publish run automatically on **merge to `main`** (GitHub Actions).
 
 ## When to Use
 
@@ -15,6 +15,8 @@ Guides version bump, file updates, changelog, and publish for the **mcp-runrunit
 
 ## Release Workflow
 
+**Publish is automatic:** the workflow `.github/workflows/release-mcp-runrunit.yml` runs on push to `main` (when `mcp-runrunit/**` or the workflow file change). It builds, publishes to npm, and creates the git tag. You only need to **update the version and changelog** before merging to `main`.
+
 Copy and track progress:
 
 ```
@@ -23,7 +25,7 @@ Release progress:
 - [ ] 2. Update package.json version
 - [ ] 3. Update server.json version (both places)
 - [ ] 4. Update CHANGELOG.md
-- [ ] 5. Build and publish
+- [ ] 5. Commit, push, and open/merge PR to main (CI will publish)
 ```
 
 ---
@@ -119,38 +121,33 @@ Use [Keep a Changelog](https://keepachangelog.com/) format. Add a new section at
 
 ---
 
-## Step 5: Build and Publish
+## Step 5: Commit and Merge to main
 
-From repo root or `mcp-runrunit`:
+After updating version and changelog:
 
-1. **Build**
-   ```bash
-   cd mcp-runrunit && npm run build
-   ```
-
-2. **Publish to npm** (run from `mcp-runrunit`)
-   ```bash
-   npm publish
-   ```
-   - Ensure you are logged in: `npm whoami`
-   - For scoped or first publish: follow npm docs for access and 2FA.
-
-3. **Commit and tag** (recommended)
+1. **Commit** the version files:
    ```bash
    git add mcp-runrunit/package.json mcp-runrunit/server.json mcp-runrunit/CHANGELOG.md
-   git commit -m "chore(mcp-runrunit): release v1.0.2"
-   git tag mcp-runrunit@1.0.2
+   git commit -m "chore(mcp-runrunit): release vX.Y.Z"
    ```
+
+2. **Push** your branch and open (or merge) a **PR to `main`**.
+
+3. **On merge to `main`**, the GitHub Action will:
+   - Install dependencies, build, and publish to npm
+   - Create and push the tag `vX.Y.Z`
+
+No local `npm publish` or manual tagging is required.
 
 ---
 
 ## Summary Checklist
 
-Before publishing:
+Before merging to main:
 
 - [ ] Same version in `package.json`, `server.json` (root), and `server.json` → `packages[0].version`
 - [ ] CHANGELOG.md has new `[X.Y.Z] - date` section at the top with correct sections (Added/Changed/Fixed/…)
-- [ ] Build passes: `npm run build` in mcp-runrunit
+- [ ] Build passes locally (optional): `npm run build` in mcp-runrunit
 
 ## File Reference
 
