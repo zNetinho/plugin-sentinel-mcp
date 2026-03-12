@@ -4,6 +4,15 @@ All notable changes to the mcp-runrunit package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.2] - 2026-03-12
+
+### Fixed
+- Release workflow: explicit `.npmrc` in package directory so npm publish authenticates correctly (fixes ENEEDAUTH).
+- Release workflow: Node 24 LTS, `id-token: write` for provenance.
+
+### Changed
+- Release workflow: separate step for `npm pkg fix`; publish with `--provenance --access public`.
+
 ## [1.1.1] - 2026-03-11
 
 ### Fixed
