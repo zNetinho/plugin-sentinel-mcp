@@ -149,7 +149,7 @@ export const TOOLS = [
   {
     name: "runrunit_create_task",
     description:
-      "Create a task on Runrun.it in board Ongoing (ID: 96356) in column Task by default. Requires title and type_id. Optional: project_id, assignments, desired_date, etc.",
+      "Create a task on Runrun.it in board Ongoing (ID: 96356) in column Task by default and assignee from who is call the tool. Requires title (eg.: [project_name] - task_name) and type_id. Optional: project_id, assignments, desired_date, etc.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -486,11 +486,11 @@ export const TOOLS = [
   {
     name: "runrunit_discord_create_channel",
     description:
-      "Create a text channel in the Discord server (guild). Use guild_id from env (DISCORD_GUILD_ID) or pass explicitly. One channel per client pattern.",
+      "Create a text channel in the Discord server (guild) if not exists, use comparison with name 'Client 1' -> 'client-1' to avoid create duplicate channels. Use guild_id from env (DISCORD_GUILD_ID) or pass explicitly. One channel per client pattern.",
     inputSchema: {
       type: "object" as const,
       properties: {
-        name: { type: "string", description: "Channel name (slug, e.g. client-123 or client-name)" },
+        name: { type: "string", description: "Channel name (slug, e.g. client-name alaways for legible, ex: 'Client 1' -> 'client-1')" },
         guild_id: { type: "string", description: "Discord guild (server) ID (optional if DISCORD_GUILD_ID set)" },
         parent_id: { type: "string", description: "Category channel ID (optional)" },
         topic: { type: "string", description: "Channel topic (optional)" },
@@ -519,7 +519,7 @@ export const TOOLS = [
   {
     name: "runrunit_discord_get_or_create_channel_for_client",
     description:
-      "Get or create a Discord text channel for a Runrun.it client (1 channel per client). Returns channel_id and channel_name. Use before runrunit_discord_send_message to ensure the channel exists.",
+      "Get or create a Discord text channel for a Runrun.it client (1 channel per client, use client_name always avaliable transform to slug. ex: 'Client 1' -> 'client-1'). Returns channel_id and channel_name. Use before runrunit_discord_send_message to ensure the channel exists.",
     inputSchema: {
       type: "object" as const,
       properties: {

@@ -65,6 +65,11 @@ export type CreateTaskBody = {
 };
 
 export async function createTask(body: CreateTaskBody) {
+  console.log("createTask", body);
+  const id = body.task.assignments?.[0]?.assignee_id;
+  if (!id) {
+    
+  }
   return runrunitFetch<unknown>("tasks", {
     method: "POST",
     body: JSON.stringify(body),
