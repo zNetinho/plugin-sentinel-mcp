@@ -198,6 +198,20 @@ Skills em `cursor-skills/`:
 | `comentar-task-runrunit` | Orquestra evidências e comentário na tarefa do Runrun.it: captura antes/depois, upload no Cloudinary, opcionalmente abre PR e cria comentário na task com resumo, passo a passo de teste e links; grava link_da_branch na task se houver PR. |
 | `create-pr-github` | Cria um pull request bem estruturado, com descrição, rótulos, revisores e evidências visuais. Inclui preparar branch, descrição, checklist e output obrigatório (link da PR, branch, ambiente de destino). |
 
+### Agents
+
+
+| Agente | Nome exibido | Descrição | Quando usar |
+|--------|--------------|-----------|-------------|
+| **context-bridge** | Doc-Brief (Implementation Brief) | Filtro de documentação técnica: extrai lógica de implementação, assinaturas e dependências em Implementation Briefs de alta densidade; remove marketing e redundância. | Quando precisar transformar documentação longa em um resumo técnico pronto para implementação (Quick Start, Core Logic, API Reference, Gotchas). |
+| **kieran-typescript-reviewer** | kieran-typescript-reviewer | Revisa código TypeScript com barra de qualidade alta em type safety, padrões modernos e manutenibilidade. | Após implementar features, modificar código ou criar novos componentes TypeScript; para garantir convenções e boas práticas. |
+| **mentor** | Mentor mode | Ajuda a mentorar o engenheiro com orientação e suporte, sem editar código. | Quando quiser desafiar premissas, fazer perguntas socráticas e guiar a solução sem dar a resposta pronta. |
+| **performance-optimizer** | performance-optimizer | Especialista em otimização de performance, profiling, Core Web Vitals e otimização de bundle. | Para melhorar velocidade, reduzir tamanho de bundle e otimizar runtime; termos: performance, optimize, speed, slow, memory, cpu, benchmark, lighthouse. |
+| **prd** | Create PRD Chat Mode | Gera um PRD (Product Requirements Document) em Markdown com user stories, critérios de aceite, considerações técnicas e métricas; opcionalmente cria issues no GitHub. | Para documentar requisitos de produto de forma estruturada e, se desejado, gerar issues a partir das user stories. |
+| **toph** | Toph | Especialista em acessibilidade web (WCAG 2.1/2.2), UX inclusiva e testes de a11y. | Para revisar acessibilidade, teclado, foco, ARIA, formulários, mídia, testes com leitores de tela e ferramentas (axe, pa11y, Lighthouse). |
+| **security-reviewer** | security-reviewer | Revisor focado em segurança: vulnerabilidades e boas práticas. | Para checar injeção (SQL, XSS, comandos), autenticação/autorização, dados sensíveis, criptografia, dependências e validação de entrada. |
+
+
 ## Contexto para o agente (uso assertivo das tools)
 
 Para que o Cursor/IA use as tools de forma assertiva e inteligente, consulte:
