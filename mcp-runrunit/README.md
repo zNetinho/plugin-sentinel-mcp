@@ -217,6 +217,7 @@ Skills em `cursor-skills/`:
 Para que o Cursor/IA use as tools de forma assertiva e inteligente, consulte:
 
 - **`docs/CONTEXTO-AGENTE.md`** — quando usar cada tool, parâmetros (tipos, formatos), fluxos recomendados, erros comuns e glossário Runrun.it.
+- **`docs/Atlassian-Jira-com-Runrun.it.md`** — como usar Atlassian (Jira) junto com o MCP Runrun.it (dois MCPs no Cursor, vínculo task ↔ issue, automação via Zapier).
 
 No workspace do plugin existe também a regra **Runrun.it MCP** em `.cursor/rules/runrunit-mcp.mdc`, que resume essas orientações para o agente.
 
