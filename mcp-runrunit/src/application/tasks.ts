@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runrunitFetch } from "../adapters/driven/api.js";
+import { getUserFromToken } from "./users.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEBUG_LOG = path.resolve(__dirname, "..", "..", "..", "debug-6b964c.log");
@@ -51,6 +52,7 @@ export type CreateTaskBody = {
     board_name?: string;
     board_stage_name?: string;
     project_id?: number;
+    description?: string;
     project_name?: string;
     on_going?: boolean;
     desired_start_date?: string;
@@ -64,11 +66,25 @@ export type CreateTaskBody = {
   };
 };
 
+async function getAssigneeId(body: CreateTaskBody) {
+
+  const user = await getUserFromToken();
+  if (!user) {
+    return { error: "No user found" };
+  }
+  return user.id;
+}
+
 export async function createTask(body: CreateTaskBody) {
   console.log("createTask", body);
   const id = body.task.assignments?.[0]?.assignee_id;
   if (!id) {
-    
+    const assigneeId = await getAssigneeId(body);
+    if (typeof assigneeId === "string") {
+      body.task.assignments = [{ assignee_id: assigneeId }];
+    } else {
+      return assigneeId;
+    }
   }
   return runrunitFetch<unknown>("tasks", {
     method: "POST",

@@ -51,7 +51,7 @@ Este documento define regras e convenções para que o agente (Cursor/IA) use as
 | Enviar mensagem em um canal Discord | `runrunit_discord_send_message` | Exige `channel_id` e `content`. Opcional: `task_id`, `project_id` para contexto. Requer `BOT_RUNRUNIT_REPORT` no env. |
 | Criar canal de texto no servidor Discord | `runrunit_discord_create_channel` | Exige `name`. Opcional: `guild_id` (ou use `DISCORD_GUILD_ID`), `parent_id` (categoria), `topic`. |
 | Listar canais do servidor Discord | `runrunit_discord_list_channels` | Opcional: `guild_id` (senão usa `DISCORD_GUILD_ID` ou resolve por `DISCORD_CHANNEL_ID`). |
-| Garantir canal por cliente (1 canal por cliente) | `runrunit_discord_get_or_create_channel_for_client` | Passar `client_id` e/ou `client_name` (Runrun.it). Retorna `channel_id` e `channel_name`; cria o canal se não existir. Usar antes de `runrunit_discord_send_message` para enviar no canal do cliente. |
+| Garantir canal por cliente (1 canal por cliente) | `runrunit_discord_get_or_create_channel` | Passar `client_id` e/ou `client_name` (Runrun.it). Retorna `channel_id` e `channel_name`; cria o canal se não existir. Usar antes de `runrunit_discord_send_message` para enviar no canal do cliente. |
 
 **Regra – Categoria Tasks:** Na categoria **Tasks** do Discord, **só criar um novo canal se o projeto ainda não existir**. Sempre fazer a **busca por nome do projeto** (ex.: via `runrunit_discord_list_channels`, filtrar canais na categoria Tasks pelo nome do projeto). Se já existir canal com o nome do projeto, usar esse canal; caso contrário, criar o novo canal na categoria Tasks.
 
