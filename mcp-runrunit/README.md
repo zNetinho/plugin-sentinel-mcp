@@ -2,17 +2,6 @@
 
 Servidor MCP (Model Context Protocol) para comunicação com a API do [Runrun.it](https://runrun.it). Expõe ferramentas de **Tasks** e **Comments** para uso no Cursor ou em outros clientes MCP.
 
-## Como o MCP fica disponível para outras pessoas?
-
-- **Não existe um servidor MCP central** que hospeda seu código. O MCP é um **processo que roda na máquina de quem usa** (ou em um servidor que a pessoa/empresa controla).
-- **Quem usa precisa:**
-  1. Ter o código deste servidor (clonar o repositório do plugin ou, no futuro, instalar um pacote npm).
-  2. Rodar em **Node.js**: `npm install` + `npm run build` na pasta `mcp-runrunit`.
-  3. Configurar o **Cursor** (ou outro cliente MCP) para **iniciar esse processo** e passar as variáveis de ambiente (credenciais Runrun.it).
-- O Cursor então **abre o processo** (`node .../dist/index.js`) e se comunica com ele por **stdio** (entrada/saída padrão). Ou seja: o “servidor” MCP é só um script Node.js que o Cursor executa e com o qual troca mensagens JSON-RPC.
-
-**Resumo:** O plugin do Cursor (regras, skills, agentes) pode ser publicado no marketplace. O **MCP Runrun.it** é distribuído junto com o repositório (ou via npm); cada pessoa instala, compila e configura no próprio Cursor com as credenciais dela. Não há um “servidor em nuvem” do MCP — ele roda em Node.js onde o usuário quiser (local ou servidor próprio).
-
 ## Arquitetura
 
 O projeto adota o padrão **Arquitetura Hexagonal** (Ports & Adapters): o núcleo da aplicação fica isolado de detalhes de transporte (stdio, HTTP) e do cliente HTTP do Runrun.it. As **portas** definem contratos de entrada (MCP) e saída (acesso à API); os **adaptadores** implementam esses contratos (transporte e cliente HTTP).
@@ -80,16 +69,7 @@ Configure as variáveis de ambiente (ou no JSON de configuração do MCP no Curs
 - `CLOUDINARY_API_KEY` — API key
 - `CLOUDINARY_API_SECRET` — API secret (nunca expor no client-side)
 
-## Por que dava erro no pacote npm e funcionava só localmente?
-
-- **Quando você usa `npx mcp-runrunit`**, o npm instala o pacote em uma pasta (ex.: `node_modules/mcp-runrunit/`) e instala as dependências dentro dela (ex.: `node_modules/mcp-runrunit/node_modules/@modelcontextprotocol/sdk/`). O binário que o Cursor executa é `dist/index.js` desse pacote instalado.
-- **Se esse `dist/index.js` for o arquivo gerado só pelo TypeScript** (`tsc`), ele contém algo como `import ... from "@modelcontextprotocol/sdk/server/stdio.js"`. O Node então tenta resolver esse módulo dentro da pasta instalada. Em muitos ambientes (Windows, cache do npx, resolução ESM) essa resolução falha com `ERR_MODULE_NOT_FOUND`, mesmo com o SDK instalado ao lado — por isso o erro aparece “num pacote que está dentro do MCP”.
-- **Localmente funcionava** porque:
-  1. **Modo HTTP:** você rodava `npm run start` (servidor na porta 3000). O `server.ts` usa `require(caminho_absoluto)` para o SDK, sem depender da resolução ESM do Node, então não quebra.
-  2. **Modo stdio no repo:** depois de `npm run build`, o seu `dist/index.js` local é **substituído pelo bundle** (script `scripts/bundle.mjs`), que junta todo o código e o SDK em um único arquivo. Esse arquivo não importa mais nada do `@modelcontextprotocol/sdk`, então roda em qualquer lugar.
-- **Para o pacote publicado funcionar via npx**, o `dist/index.js` que vai no tarball do npm **tem que ser esse bundle**, não o output do `tsc`. Por isso o build exclui `src/index.ts` do `tsc` e gera `dist/index.js` só com o script de bundle. Ao publicar, use `npm run build` (ou deixe `prepublishOnly` rodar) e depois `npm publish`; assim quem usar `npx mcp-runrunit` recebe o binário já bundled e o erro deixa de ocorrer.
-
-## Instalação
+## Instalação e utilização local
 
 ```bash
 cd mcp-runrunit
@@ -109,6 +89,7 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
   "mcpServers": {
     "runrunit": {
       "command": "node",
+      // Use o caminho absoluto para `dist/index.js` no seu ambiente. 
       "args": ["caminho-do-repositório-local/mcp-runrunit/dist/index.js"],
       "env": {
         "RUNRUNIT_APP_KEY": "sua_app_key",
@@ -120,9 +101,16 @@ Exemplo de configuração (ajuste o caminho para o seu projeto):
     }
   }
 }
-```
 
-Use o caminho absoluto para `dist/index.js` no seu ambiente.
+// ou
+
+"runrunit-mcp": {
+      "url": "http://localhost:3000/mcp",
+      "env": {
+        // Nesse modo é importante criar o arquivo .env na raiz do mcp ./plugin-sentinel-mcp/mcp-runrunit
+      }
+    },
+```
 
 ### Uso via npm (para outras pessoas)
 
@@ -135,18 +123,22 @@ Depois de publicado no npm, qualquer pessoa pode usar com `npx` sem clonar o rep
       "command": "npx",
       "args": ["-y", "mcp-runrunit"],
       "env": {
-        "RUNRUNIT_APP_KEY": "sua_app_key",
-        "RUNRUNIT_USER_TOKEN": "seu_user_token",
-        "CLOUDINARY_CLOUD_NAME": "sua_cloud",
-        "CLOUDINARY_API_KEY": "sua_api_key",
-        "CLOUDINARY_API_SECRET": "seu_api_secret"
+        "RUNRUNIT_APP_KEY": "<RUNRUNIT_APP_KEY>",
+        "RUNRUNIT_USER_TOKEN": "<RUNRUNIT_USER_TOKEN>",
+        "CLOUDINARY_CLOUD_NAME": "<CLOUDINARY_CLOUD_NAME>",
+        "CLOUDINARY_API_KEY": "<CLOUDINARY_API_KEY>",
+        "CLOUDINARY_API_SECRET": "<CLOUDINARY_API_SECRET>",
+        "BOT_DISCORD_TOKEN_PUBLIC_ID": "<BOT_DISCORD_TOKEN_PUBLIC_ID>",
+        "BOT_RUNRUNIT_REPORT_PRIVATE_KEY": "<BOT_RUNRUNIT_REPORT_PRIVATE_KEY>",
+        "DISCORD_GUILD_ID": "<DISCORD_GUILD_ID>",
+        "DISCORD_CHANNEL_ID": "<DISCORD_CHANNEL_ID>"
       }
     }
   }
 }
 ```
 
-## Cursor Skills (evidências, PR, comentários na task)
+## Cursor Skills (evidências, PR, comentários na task, agents)
 
 O pacote inclui a pasta `cursor-skills/` com skills para uso no Cursor: **registrar-evidencias**, **upload-image-cloudinary**, **create-pr-github**, **comentar-task-runrunit**, **code-reviewer**. Para o Cursor descobri-las, copie (ou crie link) das pastas em `node_modules/mcp-runrunit/cursor-skills/` para um destes diretórios:
 
@@ -154,72 +146,6 @@ O pacote inclui a pasta `cursor-skills/` com skills para uso no Cursor: **regist
 - **Por projeto:** `.cursor/skills/` ou `.agents/skills/` na raiz do projeto
 
 As skills que fazem upload de imagens (evidências em PRs e comentários Runrun.it) usam **Cloudinary**; configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e `CLOUDINARY_API_SECRET` no `env` do MCP ou no ambiente.
-
-## Publicar como pacote npm e no MCP Registry
-
-Para que outras pessoas possam instalar o servidor via `npx mcp-runrunit` e listá-lo no [MCP Registry](https://registry.modelcontextprotocol.io):
-
-1. **Substitua placeholders**  
-   Em `package.json` e `server.json`, troque `YOUR_GITHUB_USERNAME` pelo seu usuário do GitHub (obrigatório para autenticação no Registry).
-
-2. **Publicar no npm**
-   ```bash
-   npm login
-   npm run build
-   npm publish --access public
-   ```
-   (Se usar pacote escopo, ex.: `@seu-usuario/mcp-runrunit`, use `npm publish --access public`.)
-
-3. **Instalar o mcp-publisher**  
-   [Download](https://github.com/modelcontextprotocol/registry/releases) do binário ou:
-   ```powershell
-   # Windows (PowerShell)
-   $arch = if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq "Arm64") { "arm64" } else { "amd64" }
-   Invoke-WebRequest -Uri "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_windows_$arch.tar.gz" -OutFile "mcp-publisher.tar.gz"
-   tar xf mcp-publisher.tar.gz mcp-publisher.exe
-   ```
-   Coloque `mcp-publisher.exe` em um diretório do PATH.
-
-4. **Autenticar no MCP Registry**
-   ```bash
-   mcp-publisher login github
-   ```
-   Siga o fluxo no navegador (código de dispositivo).
-
-5. **Publicar no MCP Registry**  
-   Aguarde ~10–15 minutos após o `npm publish` (propagação do CDN). Depois:
-   ```bash
-   mcp-publisher publish
-   ```
-   O `server.json` na raiz do projeto será enviado; o `name` em `server.json` deve ser igual ao `mcpName` em `package.json`.
-
-6. **Verificar**
-   ```bash
-   curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=runrunit"
-   ```
-
-Ao atualizar a versão, altere `version` em `package.json` e em `server.json` (e em `packages[0].version` no `server.json`), faça `npm publish` e, após a espera, `mcp-publisher publish`.
-
-### Como outra pessoa usa (resumo)
-
-1. Clonar o repositório (ou baixar a pasta `mcp-runrunit`).
-2. Na pasta: `npm install` e `npm run build`.
-3. Crie um `.env` com as variáveis (use `.env.example` como referência): `RUNRUNIT_APP_KEY`, `RUNRUNIT_USER_TOKEN` e, se for usar evidências/Cloudinary, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
-4. No Cursor: adicionar este MCP na configuração com `RUNRUNIT_APP_KEY` e `RUNRUNIT_USER_TOKEN` (e opcionalmente as variáveis Cloudinary). Exemplo para servidor HTTP local:
-   ```json
-   "runrunit": {
-     "url": "http://127.0.0.1:3000/mcp",
-     "env": {
-       "RUNRUNIT_APP_KEY": "APP_KEY",
-       "RUNRUNIT_USER_TOKEN": "USER_TOKEN",
-       "CLOUDINARY_CLOUD_NAME": "sua_cloud",
-       "CLOUDINARY_API_KEY": "sua_api_key",
-       "CLOUDINARY_API_SECRET": "seu_api_secret"
-     }
-   }
-   ```
-5. Rode `cd mcp-runrunit && npm run start`
-6. Servidor iniciado, confira na janela de MCPs se o mesmo aparece ativo.
 
 ## Ferramentas (Tools)
 
@@ -250,6 +176,27 @@ Ao atualizar a versão, altere `version` em `package.json` e em `server.json` (e
 | `runrunit_update_comment` | Edita o texto de um comentário |
 | `runrunit_delete_comment` | Remove um comentário |
 | `runrunit_comment_reaction` | Adiciona reação (emoji) a um comentário |
+
+### Discord
+
+| Ferramenta | Descrição |
+|------------|-----------|
+| `runrunit_discord_send_message` | Envia mensagem em um canal do Discord (channel_id, content; opcional task_id, project_id). Requer BOT_RUNRUNIT_REPORT. |
+| `runrunit_discord_create_channel` | Cria um canal de texto no servidor (guild). Parâmetros: name (slug, ex.: client-1); opcional guild_id, parent_id, topic. Usa DISCORD_GUILD_ID se guild_id não for passado. |
+| `runrunit_discord_list_channels` | Lista canais do servidor Discord. guild_id opcional (usa DISCORD_GUILD_ID ou resolve por DISCORD_CHANNEL_ID). |
+| `runrunit_discord_get_or_create_channel` | Obtém ou cria um canal por cliente Runrun.it (1 canal por cliente). client_id ou client_name (ex.: "Client 1" → slug client-1). Retorna channel_id e channel_name; use antes de enviar mensagens. |
+
+### Skills
+
+Skills em `cursor-skills/`:
+
+| Skill | Descrição |
+|-------|-----------|
+| `code-reviewer` | Revisão de código alinhada aos padrões da agência. Use ao revisar PRs, sugerir melhorias ou validar implementações. |
+| `registrar-evidencias` | Captura screenshots em múltiplos viewports (mobile, tablet, desktop) a partir de URLs "antes" e "depois". Usar para evidências visuais, comparar antes/depois, documentar mudanças de UI ou preparar imagens para PRs e relatórios. |
+| `upload-image-cloudinary` | Upload de imagens para Cloudinary e retorno de URLs públicas. Usar quando screenshots ou evidências precisarem ser hospedadas (ex.: body da PR, docs). Requer CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET. |
+| `comentar-task-runrunit` | Orquestra evidências e comentário na tarefa do Runrun.it: captura antes/depois, upload no Cloudinary, opcionalmente abre PR e cria comentário na task com resumo, passo a passo de teste e links; grava link_da_branch na task se houver PR. |
+| `create-pr-github` | Cria um pull request bem estruturado, com descrição, rótulos, revisores e evidências visuais. Inclui preparar branch, descrição, checklist e output obrigatório (link da PR, branch, ambiente de destino). |
 
 ## Contexto para o agente (uso assertivo das tools)
 
