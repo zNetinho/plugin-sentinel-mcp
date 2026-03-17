@@ -514,10 +514,10 @@ export const TOOLS = [
     },
   },
   /**
-   * @namedTools runrunit_discord_get_or_create_channel_for_client
+   * @namedTools runrunit_discord_get_or_create_channel
    */
   {
-    name: "runrunit_discord_get_or_create_channel_for_client",
+    name: "runrunit_discord_get_or_create_channel",
     description:
       "Get or create a Discord text channel for a Runrun.it client (1 channel per client, use client_name always avaliable transform to slug. ex: 'Client 1' -> 'client-1'). Returns channel_id and channel_name. Use before runrunit_discord_send_message to ensure the channel exists.",
     inputSchema: {
@@ -895,7 +895,7 @@ export function createMcpServer(): Server {
           result = await discord.listChannels(guildId);
           break;
         }
-        case "runrunit_discord_get_or_create_channel_for_client": {
+        case "runrunit_discord_get_or_create_channel": {
           result = await discord.getOrCreateChannelForClient({
             clientId: (a.client_id as string | undefined)?.trim() || undefined,
             clientName: (a.client_name as string | undefined)?.trim() || undefined,

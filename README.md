@@ -1,6 +1,6 @@
-# Plugin da Agência (Cursor)
+# Plugin N1 + MCP runrunit (Cursor)
 
-Plugin do Cursor com regras, skills, agentes e comandos para padronizar o trabalho da sua agência.
+Plugin do Cursor com regras, skills, agentes, comandos, e MCP para padronizar o trabalho da sua agência.
 
 ## Estrutura
 
@@ -8,7 +8,7 @@ Plugin do Cursor com regras, skills, agentes e comandos para padronizar o trabal
 agency-plugin/
 ├── .cursor-plugin/
 │   └── plugin.json        # Manifesto do plugin
-├── mcp-runrunit/          # Servidor MCP para Runrun.it (Tasks + Comments)
+├── mcp-runrunit/          # Servidor MCP para Runrun.it (Tasks + Comments + Discord)
 ├── docs/                  # Documentação de referência (API, workflows, entidades)
 │   └── Indíce.md          # Índice dos tópicos — os agentes consultam esta pasta
 ├── rules/                 # Regras (.mdc)
@@ -38,9 +38,44 @@ agency-plugin/
 
 ## Como usar
 
-1. **Instalação**: instale o plugin pelo [marketplace do Cursor](https://cursor.com/marketplace) ou use este repositório como plugin local.
-2. **Personalização**: edite `plugin.json` (nome, descrição, autor), troque o logo em `assets/logo.svg` e ajuste as regras, skills e comandos aos processos da sua agência.
-3. **Hooks**: se quiser scripts automáticos (ex.: formatar código após edição), configure em `hooks/hooks.json`.
+1. Insira a configuração do MCP no seu Cursor.
+```json
+"runrunit-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-runrunit"
+      ],
+      "env": {
+        "RUNRUNIT_APP_KEY": "<APP_KEY>",
+        "RUNRUNIT_USER_TOKEN": "<USER_TOKEN>",
+        "CLOUDINARY_CLOUD_NAME": "<CLOUD NAME>",
+        "CLOUDINARY_API_KEY": "<CLOUDINARY_API_KEY>",
+        "CLOUDINARY_API_SECRET": "<CLOUDINARY_API_SECRET>",
+        "BOT_DISCORD_TOKEN_PUBLIC_ID": "<BOT_DISCORD_TOKEN_PUBLIC_ID>",
+        "BOT_RUNRUNIT_REPORT_PRIVATE_KEY": "<BOT_RUNRUNIT_REPORT_PRIVATE_KEY>",
+        "DISCORD_GUILD_ID": "<DISCORD_GUILD_ID>",
+        "DISCORD_CHANNEL_ID": "<DISCORD_CHANNEL_ID>"
+      }
+    },
+```
+**
+> Substitua os valores entre "" acima por chaves reais
+
+1. As credenciais do runrunit, basta pegar no perfil.
+https://i.imgur.com/qT6Xmcz.png
+
+2. Obter as credenciais do Cloudinary (bucket online para hospedagem de imagens, disponibiliza links para as documentações)
+
+    2.1 Faça login/registro https://cloudinary.com/users/register_free (Utilize sua conta google ou Github)
+
+    2.2 https://i.imgur.com/cfyDVXA.png
+
+    2.3 https://i.imgur.com/ckwAfby.png
+
+3. As variaveis do Discord hoje são uma utilização opicional, visando implementação futura onde iremos unificar os canais dos clientes com os gestores sinalizando andamentos, impeditivos, finalizações ou qualquer outro evento relevante para o acompanhamento.
+
+## Skills disponíveis no [README.md do MCP](./mcp-runrunit/README.md)
 
 ## Publicação
 
