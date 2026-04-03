@@ -149,12 +149,17 @@ export const TOOLS = [
   {
     name: "runrunit_create_task",
     description:
-      "Create a task on Runrun.it in board Ongoing (ID: 96356) in column Task by default and assignee from who is call the tool. Requires title (eg.: [project_name] - task_name) and type_id. Optional: project_id, assignments, desired_date, etc.",
+      "Create a task on Runrun.it in board Ongoing (ID: 96356) in column Task by default and assignee from who is call the tool. Requires title (eg.: [project_name] - task_name) and type_id. Optional: description (rich description via Task Description API, appended to any existing text), project_id, assignments, desired_date, etc.",
     inputSchema: {
       type: "object" as const,
       properties: {
         title: { type: "string", description: "Task title" },
         type_id: { type: "number", description: "Task type ID" },
+        description: {
+          type: "string",
+          description:
+            "Task description body (optional). Stored via PUT /tasks/:id/description after create; new text is appended after any content already on the task, never replacing it outright.",
+        },
         project_id: { type: "number", description: "Project ID" },
         project_name: { type: "string", description: "Project name" },
         board_name: { type: "string", description: "Board name" },
@@ -745,6 +750,9 @@ export function createMcpServer(): Server {
             task: {
               title: String(a.title),
               type_id: Number(a.type_id),
+              ...(a.description != null && String(a.description).length > 0
+                ? { description: String(a.description) }
+                : {}),
               board_stage_id: Number(a.board_stage_id),
               board_name: String(a.board_name),
               board_stage_name: String(a.board_stage_name),

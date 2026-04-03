@@ -26,6 +26,8 @@ export type ListTasksParams = {
 export type CreateTaskPayload = {
   title: string;
   type_id: number;
+  /** Set on create; stored via `PUT /tasks/:id/description`, not on the main create payload. */
+  description?: string;
   board_stage_id?: number;
   board_name?: string;
   board_stage_name?: string;
