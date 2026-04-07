@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "runrunit-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-runrunit"
+      ],
+      "env": {
+        "RUNRUNIT_APP_KEY": "",
+        "RUNRUNIT_USER_TOKEN": "",
+        "CLOUDINARY_CLOUD_NAME": "",
+        "CLOUDINARY_API_KEY": "",
+        "CLOUDINARY_API_SECRET": "",
+        "BOT_DISCORD_TOKEN_PUBLIC_ID": "",
+        "BOT_RUNRUNIT_REPORT_PRIVATE_KEY": "",
+        "DISCORD_GUILD_ID": "",
+        "DISCORD_CHANNEL_ID": ""
+      }
+    }
+  }
+}

@@ -156,3 +156,19 @@ Before merging to main:
 | `mcp-runrunit/package.json` | `"version": "X.Y.Z"` |
 | `mcp-runrunit/server.json` | `"version": "X.Y.Z"` (root and inside `packages[0]`) |
 | `mcp-runrunit/CHANGELOG.md` | New release section at top |
+
+---
+
+## Troubleshooting: npm publish fails with EOTP (one-time password)
+
+If the CI workflow fails with `npm error code EOTP` or "This operation requires a one-time password", the **NPM_TOKEN** does not bypass 2FA. Fix:
+
+1. Go to **https://www.npmjs.com/access-tokens** (or Profile → Access Tokens).
+2. Click **Generate New Token** (create a **granular** token, not classic).
+3. Set token name (e.g. `mcp-runrunit-github-actions`).
+4. **Check** the option **"Bypass two-factor authentication"** — this is required for accounts with 2FA.
+5. In **Packages and scopes**, select the `mcp-runrunit` package (or "All packages").
+6. Set expiration and generate.
+7. Copy the token and update **GitHub repository secret** `NPM_TOKEN` at Settings → Secrets and variables → Actions.
+
+Token types like "Automation" (classic) can still require OTP with 2FA enabled; only granular tokens with "Bypass 2FA" work in CI.
